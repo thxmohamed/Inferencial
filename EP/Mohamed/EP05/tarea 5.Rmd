@@ -1,0 +1,130 @@
+---
+title: "R Notebook"
+author: "Equipo 4"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggpubr)
+library(ez)
+library(latex2exp)
+```
+
+```{r}
+datos = read.csv2("EP05 Datos.csv")
+
+data <- datos %>% filter(tipo == "2x2x2" & (pais == "Colombia" | pais == "Argentina" | pais == "Ecuador"))
+```
+
+Formulación de Hipótesis
+
+H0:El tiempo en promedio necesitado para resolver el cubo de 2x2x2 (TeX("$\\u^{2x2x2}$") ) es igual para Colombia, Ecuador y Argentina.
+
+Ha: El tiempo en promedio necesitado para resolver el cubo de 2x2x2 es diferente para al menos un pais.
+
+Matematicamente
+
+H0: TeX("$\\u_{Colombia}^{2x2x2}$") = TeX("$\\u_{Ecuador}^{2x2x2}$") = TeX("$\\u_{Argentina}^{2x2x2}$")
+
+Ha: ∃ i, j ∈ { Colombia, Ecuador, Argentina}, i != j\| TeX("$\\u_{i}^{2x2x2}$") != TeX("$\\u_{j}^{2x2x2}$")
+
+Prueba de condiciones
+
+1.  Al medir en base al tiempo, se determina que efectivamente es una escala con interrvalos iguales, ya que el tiempo es una magnitud física.
+
+2.  En base al enunciado se comprueba que las muestra fueron obtenidas de manera aleatoria e independientes.
+
+```{r}
+# 3. Comprobación de normalidad
+data[["pais"]] = factor(data[["pais"]])
+data[["instancia"]] = factor(1:nrow(data))
+
+# Crear gráfico Q-Q para la columna 'tiempo'
+g = ggqqplot(data,
+             x = "tiempo",
+             y = "pais",
+             color = "pais")
+g = g + facet_wrap(~ pais)
+g = g + rremove("x.ticks") + rremove("x.text")
+g = g + rremove("y.ticks") + rremove("y.text")
+g = g + rremove("axis.title")
+
+# Imprimir el gráfico
+print(g)
+```
+
+```{r}
+test_normalidad = data %>% group_by(pais) %>% summarise(p = shapiro.test(tiempo)$p.value)
+print(test_normalidad)
+```
+
+Gracias al grafico y el test de shapiro wilk, se determina que la muestra efectivamente sigue una distribución normal.
+
+```{r}
+# 4. Verificar condición de homocedasticidad
+prueba = ezANOVA(data = data, dv = tiempo, between = pais, wid = instancia, return_aov = TRUE)
+
+print(prueba)
+```
+
+Según el p-value de la prueba ANOVA, el cual es prácticamente cero, se puede determinar que existe una diferencia significativa entre por lo menos dos países. Esto permite que se rechace la hipótesis nula en favor de la alternativa.
+
+
+#####################################################
+Según el resultado de la prueba de homocedasticidad de varianza con un p-value: 0.7860277 se puede determinar que efectivamente las varianzas de
+#####################################################
+
+Interpretacion de la prueba ommnibus
+
+
+```{r}
+#Grafico tamaño del efecto
+
+g2 <-ezPlot(
+  data = data,
+  dv = tiempo,
+  wid = instancia,
+  between = pais,
+  y_lab = "Tiempo promedio para resolver un cubo 2X2X2 [S]",
+  x = pais
+)
+
+g2 <- g2 + theme_pubr()
+
+print(g2)
+```
+
+
+Prueba post hoc 
+
+Dado que el ANOVA indica diferencias entre diferencias estadísticas significativas entre al menos dos países, es necesario realizar un análisis extra para saber entre cuáles países existe dicha diferencia.
+
+Para esto haremos uso de la prueba Post-hoc
+
+```{r}
+
+#Procedimiento post-hoc Bonferroni
+
+bonferroni <- pairwise.t.test(data[["tiempo"]], 
+                              data[["pais"]],
+                              p.adj = "bonferroni",
+                              pool.sd = TRUE,
+                              paired = FALSE,
+                              conf.level = 1- 0.05)
+print(bonferroni)
+
+holm <- pairwise.t.test(data[["tiempo"]], 
+                              data[["pais"]],
+                              p.adj = "holm",
+                              pool.sd = TRUE,
+                              paired = FALSE,
+                              conf.level = 1- 0.05)
+
+print(holm)
+
+```
+El análisis post-hoc muestra que el tiempo promedio de resolución es significativamente distinto en Ecuador en comparación con Colombia y Argentina, mientras que no se encontrron diferencias significativas entre Argentina y Colombia utilizando el ajuste de Bonferroni, pero sí hay diferencia significativa entre ambos si se utiliza el ajuste de Holm. Sin embargo, no es suficiente para asegurar que realmente existe dicha diferencia.
+
+En conclusión, con un nivel de significacia de (a = 0.05). Si miramos el grafico del efecto obtenido para el procedimiento ANOVA podemos concluir con un 95% de confianza que en Ecuador tienen un tiempo de resolución promedio menor al que tienen en Colombia o en Argentina. Y respecto a Argentina y Colombia, no hay diferencias significativas entre sus medias.

@@ -1,0 +1,69 @@
+---
+title: "Tester"
+author: "Mohamed Al-Marzuk, Alvaro Zamorano, Alonso Henriquez"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+
+# Parámetros
+n <- 100                    # Tamaño de la muestra
+sigma <- 1                   # Desviación estándar
+media_nula <- 10             # Media bajo la hipótesis nula
+limInf <- 9.82               # Límite inferior de rechazo
+limSup <- 10.25              # Límite superior de rechazo
+
+# Error estándar de la media
+SE <- sigma / sqrt(n)
+
+# Verdaderos valores de la media entre 9.4 y 10.4
+medias_verdaderas <- seq(9.4, 10.4, by = 0.01)
+
+# Función para calcular el poder estadístico para un valor de la media alternativa
+calcular_poder <- function(media_alternativa) {
+  # Probabilidad de rechazar H0 cuando H0 es falsa (en las colas)
+  prob_inf <- pnorm(limInf, mean = media_alternativa, sd = SE)
+  prob_sup <- 1 - pnorm(limSup, mean = media_alternativa, sd = SE)
+  poder <- prob_inf + prob_sup
+  return(poder)
+}
+
+# Calcular el poder para cada valor de la media verdadera
+poderes <- sapply(medias_verdaderas, calcular_poder)
+
+# Crear el gráfico del poder estadístico
+df_poder <- data.frame(media = medias_verdaderas, poder = poderes)
+
+ggplot(df_poder, aes(x = media, y = poder)) +
+  geom_line(color = "blue") +
+  labs(title = "Gráfico del Poder Estadístico",
+       x = "Volumen medio verdadero (litros)",
+       y = "Poder Estadístico") +
+  theme_minimal()
+
+
+# Parámetros conocidos
+alpha <- 0.05        # Nivel de significación
+poder_deseado <- 0.8 # Poder deseado
+sigma <- 1           # Desviación estándar
+media_nula <- 10     # Media bajo H0
+media_alternativa <- 9.82  # Media bajo HA (puedes cambiarla si quieres otra)
+
+# Valor Z para alfa/2 (nivel de significación de dos colas)
+z_alpha <- qnorm(1 - alpha / 2)
+
+# Valor Z para el poder deseado
+z_beta <- qnorm(poder_deseado)
+
+# Diferencia entre la media nula y la media alternativa
+delta <- abs(media_nula - media_alternativa)
+
+# Cálculo del tamaño de la muestra
+n <- ( (z_alpha + z_beta) * sigma / delta )^2
+n <- ceiling(n) # Redondear hacia arriba para obtener un número entero de bidones
+
+n
+
+```

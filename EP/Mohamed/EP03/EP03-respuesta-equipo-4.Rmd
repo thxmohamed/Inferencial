@@ -1,0 +1,75 @@
+---
+title: "EP03-respuesta-equipo-4"
+date: "`r Sys.Date()`"
+output: html_document
+---
+1-Si la ingeniera piensa rechazar la hipótesis nula cuando la muestra presente una media menor a 9,82 litros o mayor a 10,25 litros, ¿cuál es la probabilidad de que cometa un error de tipo I? Para responder, generen un gráfico de la distribución muestral de las medias hipotetizada en donde se marquen las zonas correspondientes a la probabilidad solicitada, para luego, basándose en este gráfico, calcular el área correspondiente. Tome como ejemplo los scripts presentados en la lectura sobre poder estadístico.
+
+
+
+2-Si el verdadero volumen medio de los bidones fuera de 10,3 litros, ¿cuál sería la probabilidad de que la ingeniera, que obviamente no conoce este dato, cometa un error de tipo II? Para responder, agregue al gráfico anterior la verdadera distribución muestral de las medias y marquen (con otro color) la zona correspondiente a la probabilidad solicitada, para luego, basándose en este gráfico, calcular el área correspondiente. También hay ejemplos de este procedimiento en la lectura sobre poder estadístico.
+
+
+3-Como no se conoce el verdadero volumen medio, genere un gráfico del poder estadístico con las condiciones anteriores, pero suponiendo que el verdadero volumen medio podría variar de 9,4 a 10,4 litros. Hay un ejemplo de este tipo de gráfico en la lectura sobre poder estadístico.
+
+4-Considerando un volumen medio de 10 litros, ¿cuántos bidones deberían revisarse para conseguir un poder estadístico de 0,8 y un nivel de significación de 0,05?
+
+5-¿Alcanzaría esta muestra para detectar la diferencia que la ingeniera sospecha que existe entre las dos máquinas de la planta con al menos las mismas probabilidades de cometer errores?
+
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+
+# Parámetros del problema
+n <- 100                     # Tamaño de la muestra
+limInf <- 9.82               # Límite inferior de rechazo
+limSup <- 10.25              # Límite superior de rechazo
+media_nula <- 10             # Media bajo la hipótesis nula
+sigma <- 1                   # Desviación estándar poblacional
+
+# Calcular el error estándar
+SE <- sigma / sqrt(n)
+
+# Calcular las probabilidades de rechazo (error de tipo I)
+prob_inf <- pnorm(limInf, mean = media_nula, sd = SE)  # Cola inferior
+prob_sup <- 1 - pnorm(limSup, mean = media_nula, sd = SE)  # Cola superior
+alfa_total <- prob_inf + prob_sup  # Probabilidad total de error de tipo I
+
+# Mostrar la probabilidad de error de tipo I
+cat("La probabilidad de cometer un error de tipo I (alfa) es:", alfa_total, "\n")
+
+# Graficar la distribución muestral de las medias si la hipótesis nula fuera verdadera
+g_x_limites <- media_nula + c(-6, 5) * SE
+g <- ggplot() + xlim(g_x_limites)
+g <- g + labs(x = "Litros", y = "Densidad")
+g <- g + labs(title = "Distribución muestral de las medias")
+g <- g + theme_pubr()
+
+# Agregar la curva de la hipótesis nula
+dist_0 <- stat_function(fun = dnorm,
+                        args = list(mean = media_nula, sd = SE),
+                        geom = "area",
+                        colour = "red", fill = "red", alpha = 0.1)
+
+g1 <- g + dist_0
+g1 <- g1 + geom_vline(xintercept = media_nula, colour = "red")
+
+# Colorear regiones de rechazo en el gráfico
+g2 <- g1 + stat_function(fun = dnorm,
+                         args = list(mean = media_nula, sd = SE),
+                         geom = "area",
+                         xlim = c(g_x_limites[1], limInf),
+                         fill = "red", alpha = 0.5)
+
+g2 <- g2 + stat_function(fun = dnorm,
+                         args = list(mean = media_nula, sd = SE),
+                         geom = "area",
+                         xlim = c(limSup, g_x_limites[2]),
+                         fill = "red", alpha = 0.5)
+
+# Mostrar el gráfico
+print(g2)
+alfa_total
+
+```
