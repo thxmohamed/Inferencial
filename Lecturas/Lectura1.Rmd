@@ -1,0 +1,166 @@
+---
+title: "Lectura 1"
+author: "Mohamed y Benjamin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+
+# Para leer archivos, tenemos las siguientes funciones:
+
+#datos1 <- read.csv("archivo") #para formato ingles 
+#datos2 <- read.csv2("archivo") #para formato español
+
+```
+
+Otras funciones que pueden ser útiles: 
+
+```{r}
+#Crear un vector de nombres
+
+nombres <- c("Alberto Albertez", "Alan Brito", "Zacarias Flores")
+
+# Crear un vector de fechas
+
+fechas <- as.Date(c("2008-1-25", "2004-4-17", "1999-2-21"))
+
+# Crear vectores de reales
+
+prueba1 <- c(5.5, 2.6, 5.4)
+prueba2 <- c(7, 4.7, 1.9)
+prueba3 <- c(6.1, 6, 4.4)
+
+# Construir un dataframe
+
+dataframe <- data.frame(nombres,
+                        fechas,
+                        prueba1,
+                        prueba2,
+                        prueba3,
+                        stringsAsFactors = FALSE)
+
+# Guardar este dataframe en un archivo:
+
+write.csv2(dataframe, "lect1.csv")
+```
+
+Ahora, tenemos que ver como modificar cosas dentro de este dataframe
+
+```{r}
+
+# Borrar la columna fechas
+dataframe$fechas <- NULL
+
+dataframe
+
+# Agregar la columna edad
+dataframe$edad <- c(16, 20, 25)
+
+dataframe
+
+# Crear una nueva instancia
+
+nuevaData <- data.frame(nombres = "Benjamín Baeza Pacheco",
+                        prueba1 = 7,
+                        prueba2 = 7,
+                        prueba3 = 6.8,
+                        edad = 23)
+
+# Agregar la nueva instancia al dataframe
+
+dataframe <- rbind(dataframe, nuevaData)
+
+dataframe
+
+# Eliminar las primeras tres instancias del dataframe
+
+dataframe <- dataframe[-c(1:3),]
+
+dataframe
+
+```
+
+Hay transformaciones más complejas que se hacen con dplyr
+
+```{r}
+library(dplyr)
+
+# Cargar dataframe iris de R
+
+datos <- iris
+
+# Seleccionar todas las observaciones a la especie versicolor
+
+versicolor <- datos %>% filter(Species == "versicolor")
+
+# Seleccionar la especie versiculor cuyo sepalos tengan una longitud igual o mayor a 6
+
+largas <- datos %>% filter(Species == "versicolor" & Sepal.Length >= 6)
+
+# Seleccionar especies relativas a los petalos
+
+petalos <- datos %>% select(Species, starts_with("Petal"))
+
+# Seleccionar variables de ancho y la especie
+
+anchos <- datos %>% select(ends_with("Width"), Species)
+
+# Agregar a los pétlos una nueva variable con la razon entre el largo y el ancho de estos
+
+petalos <- petalos %>% mutate(Species, Petal.Width, Petal.Ratio = Petal.Length/Petal.Width)
+
+# ordenar el conjunto de forma descendente según el valor de la razon
+
+petalos <- petalos %>% arrange(desc(Petal.Ratio))
+
+# Ordenar el conjunto de datos en forma ascendente según el largo de pétalos
+
+petalos <- petalos  %>% arrange(Petal.Length)
+
+```
+
+Ahora vamos con los formatos de los datos (largo y ancho). PAra esto, creamos un nuevo dataframe
+
+```{r}
+library(tidyr)
+
+instancia <- 1:6
+quicksort <- c(23.2, 22.6, 23.4, 23.3, 21.8, 23.9)
+bubblesort <- c(31.6, 29.3 ,30.7, 28.5, 30.2, 28.8)
+radixsort <- c(30.1, 28.4, 30.4, 29.5, 29.9, 30.6)
+mergesort <- c(25.5, 25.7, 23.4, 24.9, 26.1, 24.6)
+algoritmos <- data.frame(instancia, quicksort, bubblesort, radixsort, mergesort)
+
+# Transformar a formato largo
+
+algoritmosLargo <- algoritmos %>% pivot_longer(c("quicksort", "bubblesort", "radixsort", "mergesort"), names_to = "algoritmos", values_to = "tiempo")
+
+algoritmosAncho <- algoritmosLargo %>% pivot_wider(names_from = "algoritmos", values_from = "tiempo")
+
+```
+
+```{r}
+# Cargar datos de R
+data <- mtcars
+
+# Renombrar columnas
+data <- data %>% rename(Rendimiento = mpg, Cilindrada = cyl, Desplazamiento = disp, Potencia = hp, Eje = drat, Peso = wt, Cuarto_milla = qsec, Motor = vs, Transmision = am, Cambios = gear, Carburadores = carb)
+
+# Dar formato categórico a las variables Motor y Transmision, renombrando a sus niveles
+
+data[["Motor"]] <- factor(data[["Motor"]], levels = c(0, 1), labels = c("V", "Recto"))
+
+data[["Transmision"]] <- factor(data[["Transmision"]], levels = c(0, 1), labels = c("Automático, Manual"))
+
+# Dar formato ordinal a las variables cilindrada y cambios, renombrando sus niveles
+
+data[["Cilindrada"]] <- factor(data[["Cilindrada"]], levels = c(4, 6, 8), labels = c("4 cilindros", "6 cilindros", "8 cilindros"), ordered = TRUE)
+
+data[["Cambios"]] <- factor(data[["Cambios"]], levels = c(3, 4, 5), labels = c("3 cambios", "4 cambios", "5 cambios"), ordered = TRUE)
+
+write.csv2(data, "aaaalo.csv")
+
+
+
+```
