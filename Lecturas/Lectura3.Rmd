@@ -68,3 +68,339 @@ print(prueba2)
 ```
 
 Prueba T de student
+
+Cuando no se conoce la desviación estándar de la población (la mayoría de veces), se usa esta prueba.
+
+Para una muestra, tiene los siguientes supuestos:
+
+1) Observaciones independientes
+2) Observaciones provienen de una distribución cercana a la normal
+
+Esta prueba se puede ocupar aunque el tamaño de la muestra no sea mayor a 30.
+
+los grados de libertad son n - 1
+
+Ejemplo: Un informático tiene un algoritmo, y quiere ver si el tiempo promedio que tarda en resolver cosas es inferior a 500 ms.
+
+H0 = El tiempo promedio es igual a 500 ms
+HA = el tiempo es inferior a 500 ms
+
+```{r}
+
+#Carga de datos
+tiempo <- c(411.555, 393.247, 455.893, 411.402, 498.723, 388.551, 435.623, 412.337, 475.447, 440.733, 398.993, 516.222, 409.561, 398.378, 465.824)
+
+# Datos conocidos
+
+n <- length(tiempo)
+grados_libertad <- n - 1
+valor_nulo <- 500
+
+# Gráfico Q-Q
+
+g <- ggqqplot(data = data.frame(tiempo), x = "tiempo", color = "steelblue", xlab = "Teórico", ylab = "Muestra", title = "Gráfico Q-Q muestra vs dist. normal")
+
+print(g)
+
+# Fijar un nivel de significancia
+
+alfa <- 0.025
+
+# Calcular el estadístico de prueba
+
+media <- mean(tiempo)
+cat("Media =", media, "M$\n")
+desv_est <- sd(tiempo)
+
+error <- desv_est/sqrt(n)
+t <- (media - valor_nulo) / error
+cat("t =", t, "\n")
+
+# Calcular el valor p
+
+p <- pt(t, df = grados_libertad, lower.tail = TRUE)
+cat("p =", p, "\n")
+
+# Construir el intervalo de confianza
+
+t_critico <- qt(alfa, df = grados_libertad, lower.tail = FALSE)
+superior <- media + t_critico * error
+cat("Intervalo de confianza = (-Inf, ", superior, "]\n", sep = "")
+
+# Aplicar prueba T
+
+prueba <- t.test(tiempo, alternative = "less", mu = valor_nulo, conf.level = 1 - alfa)
+
+print(prueba)
+
+```
+
+Para dos muestras relacionadas, la prueba sirve para determinar si estas son parecidas (media de las diferencias igual a 0) o distintas (distinta de 0)
+
+Ejemplo: Un informático tiene dos algoritmos diferentes que, en teoría, deberían tardar lo mismo en resolver un problema. Se toman 35 instancias de un problema y se registran los tiempos de ejecución de ambos
+
+H0 = La media de las diferencias es igual a 0
+
+HA = Las medias de las diferencias es distinta de 0
+
+```{r}
+# Cargar datos
+t_A <- c(411.555, 393.247, 435.893, 411.402, 498.723, 398.551, 455.923, 419.347, 475.947, 440.733, 392.993, 512.282, 419.961, 398.378, 495.824, 411.555, 395.247, 495.893, 421.402, 456.793, 392.791, 475.623, 412.337, 467.498, 420.473, 398.993, 516.222, 409.561, 394.322, 455.724, 456.777, 487.334, 445.334, 501.238, 399.899)
+
+t_B <- c(441.555, 399.277, 465.793, 416.662, 423.626, 396.531, 445.223, 413.343, 435.337, 412.643, 452.223, 412.282, 459.901, 427.474, 435.964, 414.555, 395.247, 395.893, 402.552, 406.993, 388.441, 415.655, 405.357, 407.198, 408.482, 398.207, 516.787, 409.561, 399.302, 405.704, 456.097, 482.034, 449.334, 511.208, 399.092)
+
+diferencia <- t_A - t_B
+
+# Verificar si la distribución se acerca a la normal
+
+normalidad <- shapiro.test(diferencia)
+print(normalidad)
+
+# Fijar un nivel de significancia
+
+alfa <- 0.05
+
+# Aplicar la prueba t de Student a la diferencia de medias
+
+valor_nulo <- 0
+
+prueba1 <- t.test(diferencia, alternative = "two.sided", mu = valor_nulo, conf.level = 1 - alfa)
+
+print(prueba1)
+
+# O también, aplicar la prueba t de Student para dos muestras pareadas
+
+prueba2 <- t.test(x = t_A, y = t_B, paired = TRUE, alternative = "two.sided", mu = valor_nulo, conf.level = 1 - alfa)
+
+print(prueba2)
+
+```
+
+Ahora hay que ver la prueba T para dos muestras independientes. Aquí se utiliza para comparar als medias de dos poblaciones en que las observaciones con las que se cuenta no tienen relación con ninguna de las otras observaciones.
+
+Se deben cumplir los supuestos:
+
+1) Cada muestra cumple con las condiciones para usar la distribución t
+2) Las muestras son independientes entre sí
+
+Ejemplo: Se busca determinar si una nueva vacuna A es mejor que otra vacuna B. Para ello, recluta a 28 voluntarios de diferentes países, de los cuales 15 reciben la vacuna A y 13 la vacuna B.
+
+H0 = No hay diferencia entre la efectividad promedio de ambas vacunas
+HA = la vacuna A es, en promedio, más efectiva que la B
+
+```{r}
+# Cargar los datos
+
+vacuna_A <- c(6.04, 19.84, 8.62, 13.03, 12.20, 14.78, 4.56, 26.72, 3.14, 19.14, 10.98, 13.13, 6.35, 11.14, 7.26)
+
+vacuna_B <- c(5.36, 3.35, 5.67, 4.86, 5.62, 2.93, 5.45, 6.10, 2.56, 7.64, 6.75, 4.01)
+
+# Verificar si las muestras siguen una distribución normal
+
+normalidad_A <- shapiro.test(vacuna_A)
+normalidad_B <- shapiro.test(vacuna_B)
+
+print(normalidad_A)
+print(normalidad_B)
+
+# Fijar un nivel de significancia
+
+alfa <- 0.01
+
+# Aplicar la prueba t para dos muestras independientes
+
+prueba <- t.test(x = vacuna_A, y = vacuna_B, paired = FALSE, alternative = "greater", mu = 0, conf.level = 1 - alfa)
+
+print(prueba)
+
+# Calcular la diferencia entre las medias
+
+media_A <- mean(vacuna_A)
+media_B <- mean(vacuna_B)
+
+diferencia <- media_A - media_B
+cat("Diferencia entre las medias =", diferencia, "[mg/ml]\n")
+
+```
+
+Método de Wald
+
+Se deben cumplir las siguientes condiciones:
+
+1) Las observaciones de la muestra son independientes
+2) Se cumple la condicion de exito-fracaso, que dice que se espera observar al menos 10 exitos y 10 fracasos. np >= 10, n(1-p) >= 10
+
+Wald para una proporción
+
+Ejemplo: Se desea conocer qué proporcion de un algoritmo de ordenamiento para instancias con 100000 elementos (bajo iguales condiciones de hardware y sistema) tardan menos de 25 segundos. Para ello, registró los tiempos de ejecución para 150 instancias generadas de manera aleatoria, encontrando que 64% de dichas instancias fueron resueltas en un tiempo inferior al señalado.
+
+De aquí, el tamaño de la muestra es n = 150 y la proporción de éxitos es p = 0.64
+
+Se cumple la condicion de independencia, pues son aleatorias, y se cumple la condición de éxito-fracaso, porque si usamos el p, tendríamos que se esperan 96 instancias que tarden menos de 25 segundos, y 54 que tarden más.
+
+Ahora, digamos que más del 70% se ejecutan en menos de 25 segundos. Para comprobarlo, se usa una prueba estadística con un nivel de significancia de 0.05
+
+H0 = el 70% de las instancias se ejecutan en menos de 25 segundos
+
+```{r}
+#Valores conocidos
+n <- 150
+p_exito <- 0.64
+alfa <- 0.05
+valor_nulo <- 0.7
+
+#construcción intervalo de confianza
+
+error_est <- sqrt((p_exito*(1-p_exito)) / n)
+Z_critico <- qnorm(alfa / 2, lower.tail = FALSE)
+inferior <- p_exito - Z_critico * error_est
+superior <- p_exito + Z_critico * error_est
+
+cat("Intervalo de confianza = [", inferior, ", ", superior, "]\n", sep = "")
+
+# Prueba de hipotesis
+
+error_est_hip <- sqrt((valor_nulo * (1 - valor_nulo)) / n)
+Z <- (p_exito - valor_nulo) / error_est_hip
+p <- pnorm(Z, lower.tail = FALSE)
+cat("Hipótesis alternativa unilateral\n")
+cat("Z =", Z, "\n")
+cat("p =", p, "\n")
+
+```
+
+No es suficiente para concluir que el algoritmo se ejecute en menos de 25 segundos para más del 70% de las instancias de tamaño 100000
+
+Wald para dos proporciones
+
+Para esto se usa un estimador puntual de la diferencia entre p1 y p2
+
+se deben cumplir las condiciones:
+
+1) Cada proporcion por separado sigue el modelo normal
+
+2) Las dos muestras son idependientes una de otra
+
+Ejemplo: Se busca determinar si la tasa de reprobacion de estudiantes que rinden la asignatura de programación por primera vez es igual para hombres y mujeres. Para ello, se examina la situación final de los estudiantes que rindieron la asignatura durante el segundo semestre de 2017. De una muestra de 48 hombres de 632, 26 reprobaron la asignatura. Para 42 mujeres de 507, 20 reprobaron la asingatura.
+
+Hay que verificar las condiciones de normalidad para cada una de las muestras
+
+p1 = 26/48 = 0.5417
+p2 = 20/42 = 0.4762
+
+p1 - p2 = 0,0655
+
+H0: no hay diferencia en la tasa de reprobación de hombres y mujeres
+
+HA = las tasas de reprobación son distintas para hombres y mujeres
+```{r}
+
+# Fijar valores conocidos 
+n_hombres <- 48
+n_mujeres <- 42
+exitos_hombres <- 26
+exitos_mujeres <- 20
+alfa <- 0.5
+valor_nulo <- 0
+
+# Calcular probabilidades de exito
+
+p_hombres <- exitos_hombres/n_hombres
+p_mujeres <- exitos_mujeres/n_mujeres
+
+# Estimar la diferencia
+
+diferencia <- p_hombres - p_mujeres
+
+# Construcción intervalo de confianza
+
+error_hombres <- (p_hombres * (1 - p_hombres)) / n_hombres
+
+error_mujeres <- (p_mujeres * (1 - p_mujeres)) / n_mujeres
+
+error_est <- sqrt(error_hombres + error_mujeres)
+
+Z_critico <- qnorm(alfa/2, lower.tail = FALSE)
+inferior <- diferencia - Z_critico * error_est
+superior <- diferencia + Z_critico * error_est
+cat("Intervalo de confianza = [", inferior, ", ", superior, "]\n", sep = "")
+
+# PRueba de hipotesis
+
+p_agrupada <- (exitos_hombres + exitos_mujeres) / (n_hombres + n_mujeres)
+
+error_hombres <- (p_agrupada * (1 - p_agrupada)) / n_hombres
+
+error_mujeres <- (p_agrupada * (1 - p_agrupada)) / n_mujeres
+
+error_est_hip <- sqrt(error_hombres + error_mujeres)
+
+Z <- (diferencia - valor_nulo) / error_est_hip
+
+p <- 2 * pnorm(Z, lower.tail = FALSE)
+cat("Hipótesis alternativa bilateral\n")
+cat("Z =", Z, "\n")
+cat("p =", p, "\n")
+
+```
+
+Lo anterior es solo cuando el valor nulo es 0. Si es distinto de 0, tenemos que hacer otra cosa.
+
+Supongamos que se quiere replicar el estudio anterior para una asignatura de física. Sin embargo, las autoridades están convencidas de que la tasa de reprobación es un 10% mayor en hombres que en mujeres, y que podría ser incluso mayor la diferencia. Para ello se desea comprobar con un 95% de confianza y para ello seleccionaron aleatoriamente a 89 de los 1023 hombres y a 61 de las 620 mujeres. En las muestras hay 45 y 21 reprobaciones
+
+H0: la tasa de reprobación de los hombres es exactamente un 10% más alta
+HA: La tasa de reprobación de los hombres es de más de 10% más alta
+
+```{r}
+
+#Fijar valores conocidos 
+
+n_hombres <- 89
+n_mujeres <- 61
+exitos_hombres <- 45
+exitos_mujeres <- 21
+alfa <- 0.05
+valor_nulo <- 0.1
+
+# Calcular probabilidades de éxito
+
+p_hombres <- exitos_hombres / n_hombres
+p_mujeres <- exitos_mujeres / n_mujeres
+
+# Estimar la diferencia
+
+diferencia <- p_hombres - p_mujeres
+
+# Prueba de hipótesis
+
+error_hombres <- (p_hombres * ( 1 - p_hombres)) / n_hombres
+error_mujeres <- (p_mujeres * ( 1 - p_mujeres)) / n_mujeres
+error_est <- sqrt(error_hombres + error_mujeres)
+
+Z <- (diferencia - valor_nulo) / error_est
+p <- pnorm(Z, lower.tail = FALSE)
+cat("Hipótesis alternativa bilateral\n")
+cat("Z =", Z, "\n")
+cat("p =", p, "\n")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
