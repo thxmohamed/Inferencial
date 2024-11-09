@@ -1,0 +1,323 @@
+---
+title: "Lectura 5"
+author: "Mohamed y Benjamin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Inferencias no parámetricas con proporciones
+
+Son pruebas que no mencionan ningún parámetro en sus hipótesis nula y alternativa. Tampoco se hacen suposiciones sobre la distribución de la muestra. Estas pruebas son menos restrictivas que las parámetricas, porque tienen menos supuestos.
+
+Razones para no usar siempre las no paramétricas:
+
+1) Entregan menos información porque se limitan a hipótesis del tipo "las poblaciones muestran las mismas proporciones" vs "las poblaciones muestran distintas proporciones". Pero no indican cuáles son esas proporciones en realidad, ni si una es mayor que otra
+
+2) Cuando se cumplen las condiciones para usar la prueba paramétrica, se necesintan muestras de mayor tamaño para usar las pruebas no paramétricas, pues tienen menor poder estadístico
+
+
+Prueba Chi-Cuadrado de Pearson
+
+Sirve para inferir con dos proporciones cuando disponemos de dos variables categóricas y una de ellas es dicotómica (tiene solo dos niveles). Debemos verificar las condiciones:
+
+1) Las observaciones son independientes entre sí
+2) Debe haber a lo menos 5 observaciones esperadas en cada grupo
+
+Hay tres tipos de pruebas:
+
+1.- Prueba chi-cuadrado de homogeneidad: Sirve para determinar si dos poblaciones (la variable dicotómica) presentan las mismas proporciones en los diferentes niveles de una variable categórica
+
+Ejemplo: Se realiza una encuesta a 300 programadores con más de 3 años de experiencia de todo el pais, escogidos al azar, y se les pregunta cuál es su lenguaje de programación favorito. 
+
+Las observaciones son independientes porque son aleatorias, y las muestras esperadas se hacen con:
+
+total_columna_j * total_fila_i / total
+
+H0: Programadores y programadoras tienen las mismas preferencias en lenguaje de programación favorito
+
+HA: Programadores y programadoras tienen preferencias distintas en lenguaje de programación favorito
+
+
+
+```{r}
+# Datos
+programadores <- c(42, 56, 51, 27, 24)
+programadoras <- c(25, 24, 27, 15, 9)
+
+# Crear tabla de contingencia
+tabla <- as.table(rbind(programadores, programadoras))
+
+# Asignar nombres a las dimensiones
+dimnames(tabla) <- list(sexo = c("programadores", "programadoras"),
+                        lenguajes = c("C", "Java", "Python", "Ruby", "Otro"))
+
+# Mostrar la tabla
+print(tabla)
+
+# Hacer prueba chi-cuadrado de homogeneidad
+prueba <- chisq.test(tabla)
+print(prueba)
+
+```
+
+2.- PRueba chi-cuadrado de bondad de ajuste
+
+PErmite comprobar si una distribución de frecuencias observada se asemeja a una distribución esperada (ver si una muestra es representativa de la población)
+
+Ejemplo: Una empresa cuenta con 660 programadores y programadoras especialistas en diferentes lenguajes de programación. Se selecciona un conjunto de 55 personas aleatoriamente para enviarlos a un curso de perfeccionamiento de sus lenguajes, pero lo acusan de escoger a las 55 personas a conveniencia y no de forma aleatoria. El gerente necesita demostrar que el grupo es una muestra representativa.
+
+La muestra representa menos del 10% de poblacion y fue elegida aleatoriamente, por lo que son independientes.
+
+Para la segunda condicion, calculamos las proporciones de especialistas en cada lenguaje. PAra el caso de C:
+
+236/660 = 0.358 (236 especialistas en C en la empresa)
+
+en la muestra se espera lo mismo
+0-358 * 55 = 19.69
+
+se repite el procedimiento para todo el resto de lenguajes
+
+H0: Las proporciones de especialistas en cada lenguaje son las mismas que para la nómina completa
+HA: Las proporciones son distintas en la nómina y en la muestra
+
+```{r}
+# Datos
+
+nomina <- c(236, 78, 204, 76, 66)
+muestra <- c(17, 9, 14, 10, 5)
+
+# Crear tabla de contingencia
+
+tabla <- as.table(rbind(nomina, muestra))
+
+dimnames(tabla) <- list(grupo = c("Nómina", "Muestra"), lenguajes = c("C", "Java", "Python", "Ruby", "Otro"))
+
+print(tabla)
+
+# Verificar si se espera más de 5 observaciones por grupo
+
+n_nomina <- sum(nomina)
+n_muestra <- sum(muestra)
+proporciones <- round(nomina/n_nomina, 3)
+esperados <- round(proporciones * n_muestra, 3)
+cat("\nFrecuencias esperadas:\n")
+
+print(esperados)
+
+# Hacer prueba chi-cuadrado de bondad de ajuste
+
+prueba <- chisq.test(tabla, correct = FALSE)
+print(prueba)
+
+```
+
+3.- Prueba chi-cuadrado de independencia
+
+para determinar si dos variables categóricas de una misma poblacion son independientes o si están relacionadas.
+
+Ejemplo: Se desea determinar si existe relación entre la forma del sombrero de los hongos y si estos son o no son comestibles. Para ello, recolecta una muestra de 8120 hongos. 
+
+Verificamos las condiciones. Las muestras son aleatorias y representan menos del 10% de población mundial de hongos. Con respecto a las observaciones esperadas, se usa la misma ecuación q en la de homogeneidad
+
+```{r}
+# Datos
+
+comestible <- c(404, 1948, 32, 228, 1596)
+venenoso <- c(48, 1708, 0, 600, 1556)
+
+# Tabla de contingencia
+
+tabla <- as.table(rbind(comestible, venenoso))
+
+dimnames(tabla) <- list(tipo = c("comestible", "venenoso"), sombrero = c("campana", "convexo", "hundido", "nudoso", "plano"))
+
+print(tabla)
+
+# Prueba chi cuadrado de independencia
+
+prueba <- chisq.test(tabla)
+
+cat("\nLa prueba calcula los valores esperados:\n")
+esperados <- round(prueba[["expected"]], 3)
+
+cat("\nResultados de la prueba:\n")
+print(prueba)
+
+```
+
+Prueba exacta de Fisher
+
+Alternativa a la prueba chi-cuadrado de independencia en el caso de que ambas variables sean dicotómicas. Las hipótesis a contrastar son:
+
+H0: Variables son independientes
+HA: Variables están relacionadas
+
+Ejemplo: Se desea determinar si dos vacunas, Argh y Grrr son igual de efectivas para inmunizar a la poblacion de una mordida de vampiro. Para ello se toman 17 personas, de los cuales 6 recibieron Argh y 11 recibieron Grrr. Después de tres meses, todos fueron mordidos por vampiros, ninguno de los de Argh fue afectado, pero 5 de los de Grrr fueron convertidos a vampiros.
+
+```{r}
+# Construir la tabla de contingencia
+
+vacuna <- c(rep("Argh", 6), rep("Grrr", 11))
+resultado <- c(rep("Humano", 12), rep("Vampiro", 5))
+datos <- data.frame(resultado, vacuna)
+tabla <- xtabs(~., datos)
+print(tabla)
+
+# Aplicar prueba exacta de Fisher a la tabla de contingencia
+
+prueba_1 <- fisher.test(tabla)
+cat("\nPrueba exacta de fisher usando la tabla de contingencia:\n")
+print(prueba_1)
+
+# Aplicar la prueba usando las muestras
+
+prueba_2 <- fisher.test(vacuna, resultado)
+
+cat("\nPrueba de fisher usando las muestras:\n")
+print(prueba_2)
+```
+
+Prueba de McNemar
+
+Considera el analisis de frecuencias apareadas, es decir, cuando una misma característica, con respuesta dicotómica, se mide en dos ocasiones (o situaciones) diferentes para el mismo grupo de casos
+
+En estas condiciones la prueba de McNemar determina si se produce o no un cambio significativo en las proporciones observadas entre ambas mediciones.
+
+Las hipótesis asociadas a esta prueba son:
+
+H0: no hay cambios significativos en las respuestas
+
+HA: sí hay cambios significativos en las respuestas
+
+Ejemplo: Se construyen dos modelos para predecir, a partir de las notas obtenidas en cursos previos, si sus estudiantes aprobarán o no la asignatura de aprendizaje automático. Al probar sus modelos con 25 estudiantes, obtuvo los resultados que se verán en las tablas
+
+Se desea saber si existe diferencia entre el desempeño de ambos algoritmos, por lo que decide emplear la prueba de McNemar.
+
+
+```{r}
+# Crear un vector de alumnos (1 a 25)
+alumno <- seq(1:25)
+
+# Definir los resultados del Modelo 1
+# En este modelo, 16 son "Correcto" y 9 son "Incorrecto"
+modelo_1 <- c(rep("Correcto", 16), rep("Incorrecto", 9))
+
+# Definir los resultados del Modelo 2
+# En este modelo, 9 son "Correcto", luego 11 son "Incorrecto" y 5 más "Correcto"
+modelo_2 <- c(rep("Correcto", 9), rep("Incorrecto", 11), rep("Correcto", 5))
+
+# Crear un DataFrame con los datos de los alumnos y los resultados de ambos modelos
+datos <- data.frame(alumno, modelo_2, modelo_1)
+
+# Crear la tabla de contingencia
+# Esto cuenta las combinaciones de "Correcto" e "Incorrecto" entre los dos modelos
+tabla <- table(modelo_2, modelo_1)
+
+# Imprimir la tabla de contingencia
+print(tabla)
+
+# Aplicar la prueba de McNemar usando la tabla de contingencia
+prueba_1 <- mcnemar.test(tabla)
+
+# Mostrar el resultado de la prueba de McNemar usando la tabla de contingencia
+cat("\nPrueba de McNemar usando la tabla de contingencia:\n")
+print(prueba_1)
+
+# Aplicar la prueba de McNemar usando las muestras directamente
+# Aquí, pasamos los vectores modelo_2 y modelo_1 directamente a la función sin crear una tabla
+prueba_2 <- mcnemar.test(modelo_2, modelo_1)
+
+# Mostrar el resultado de la prueba de McNemar usando las muestras
+cat("\nPrueba de McNemar usando las muestras:\n")
+print(prueba_2)
+
+
+```
+
+Prueba Q de Cochran
+
+Extensión de la de McNemar, adecuada cuando la variable de respuesta es dicotómica y la variable independiente tiene más de dos observaciones apareadas (si ambas son dicotómicas, esta es equivalente a la de McNemar)
+
+Ejemplo: Se busca determinar si existe una diferencia significativa en el desempeño de tres metaheurísticas que buscan resolver el problema del vendedor viajero. Para ello, el profesor le proporciona los datos presentados en la tabla, donde la primera columna identifica cada una de las 15 instancias del problema empleadas para evaluar las metaheurísticas, mientras que las columnas restantes indican si la metaheuristica en cuestión encontró (1) o no (0) una solución óptima para dicha instancia
+
+Las hipótesis son:
+
+H0: La proporción de instancias en que se encuentra la solución óptima es la misma para todas las metaheurísticas
+
+HA: La proporción de instancias en que se encuentra la solución óptima es distinta para al menos una de las metaheurísticas
+
+Se deben cumplir condiciones:
+
+1) La variable de respuesta es dicotómica (metaheuristica consigue o no consigue la solución óptima)
+
+2) La variable independiente es categórica (metaheuristica utilizada)
+
+3) Las observaciones son indep entre sí
+
+4) El tamaño de la muestra es suficientemente grande. 
+
+
+
+```{r}
+library(tidyverse)
+library(RVAideMemoire)
+library(rcompanion)
+
+# Crear matriz de datos
+
+
+instancia <- 1:15
+annealing <- c(0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0)
+hormigas <- c(0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 ,0 ,0 ,0, 1)
+genetico <- c(1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1)
+
+datos <- data.frame(instancia, annealing, hormigas, genetico)
+
+# Transformar a formato largo
+
+datos <- datos %>% pivot_longer(c("annealing", "hormigas", "genetico"), names_to = "metaheuristica", values_to = "resultado")
+
+datos[["instancia"]] <- factor(datos[["instancia"]])
+datos[["metaheuristica"]] <- factor(datos[["metaheuristica"]])
+
+#Hacer prueba Q de cochran
+
+prueba <- cochran.qtest(resultado ~ metaheuristica | instancia, data = datos, alpha = 0.05)
+
+print(prueba)
+
+
+# Procedimiento post-hoc con correccion de Bonferroni
+
+
+posthoc_1 <- pairwiseMcnemar(resultado ~ metaheuristica |instancia, data = datos, method = "bonferroni")
+
+cat("\nProcedimiento post-hoc con correccion de Bonferroni")
+
+print(posthoc_1)
+
+#PRocedimiento post-hoc con corrección de Holm
+
+posthoc_2 <- pairwiseMcnemar(resultado ~ metaheuristica |instancia, data = datos, method = "holm")
+
+cat("\nProcedimiento post-hoc con correccion de Holm")
+print(posthoc_2)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
