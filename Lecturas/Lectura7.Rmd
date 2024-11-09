@@ -1,0 +1,167 @@
+---
+title: "Lectura7"
+author: "Mohamed y Benjamin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+ANOVA de una vía para muestras correlacionadas
+
+Equivalente a la prueba T con muestras apareadas, pero considerando un factor con tres o más niveles.
+
+Sirve para determinar si existen diferencias significativas entre las medias de todos estos grupos
+
+Hay dos escenarios
+
+1) Diseño con medidas repetidas: a cada caso se le toman medidas en diferentes momentos o condiciones.
+
+2) Diseño con bloques aleatorios: cada bloque contiene diferentes casos agrupados según determinadas características. Por ejemplo, podemos comparar los tiempos de ejecución de k algoritmos si tenemos registros para instancias de prueba distintas, pero con dificultad similar.
+
+En ambos casos, el método es el mismo.
+
+Ejemplo: Un estudiante quiere comparar la eficiencia de cuatro algoritmos de ordenamiento: quicksort, bubblesort, radixsort y mergesort. Para ello, ha generado aleatoriamente 6 arreglos de tamaño y dificultad diversa, registrando para cada uno de ellos el tiempo de ejecución utilizado por cada algoritmo en milisegundos.
+
+H0: en promedio, no hay diferencias en el tiempo de ejecución necesitado por cada algoritmo.
+
+HA: la media de las diferencias en el tiempo de ejecución necesitado es diferente para al menos un par de algoritmos
+
+Condiciones:
+
+1) LA escala con la que se mide la variable dependiente tiene las propiedades de una escala de intervalos iguales
+
+2) Las mediciones son independientes al interior de cada grupo
+
+3) Se puede suponer que las poblaciones de origen siguen una distribución normal
+
+4) La matriz de varianzas-covarianzas es esférica. Las varianzas entre los diferentes niveles de las medidas repetidas deben ser iguales.
+
+Para nuestro ejemplo, la primera se verifica, pues el tiempo como cualquier magnitud física, tiene una escala de intervalos iguales (escala de razon). El enunciado dice que también cumple la segunda.
+
+La prueba de esfericidad es más compleja, se puede hacer en R con ezANOVA()
+
+
+```{r}
+# Cargar las librerías necesarias
+library(tidyverse)  # Para manipulación de datos y gráficos
+library(ggpubr)     # Para gráficos con ggplot2 y temas visuales
+library(ez)         # Para análisis de varianza (ANOVA) con factores dentro de sujetos
+
+# Datos del ejemplo
+instancia <- factor(1:6)  # Se define el factor de instancias, que tiene 6 niveles
+quicksort <- c(23.2, 22.6, 23.4, 23.3, 21.3, 23.9)  # Tiempos de ejecución de QuickSort
+bubblesort <- c(31.6, 29.3, 30.7, 30.8, 29.8, 30.2) # Tiempos de ejecución de BubbleSort
+radixsort <- c(20.1, 38.4, 28.7, 28.3, 29.8, 29.1) # Tiempos de ejecución de RadixSort
+mergesort <- c(25.1, 25.7, 25.7, 23.7, 25.5, 24.7) # Tiempos de ejecución de MergeSort
+
+# Crear el data frame con los datos
+datos <- data.frame(instancia, quicksort, bubblesort, radixsort, mergesort)
+
+# Transformar los datos al formato largo (long format) para análisis
+# Pivotar las columnas de los algoritmos a una sola columna
+datos <- datos %>% pivot_longer(c("quicksort", "bubblesort", "radixsort", "mergesort"), 
+                                names_to = "algoritmo", values_to = "tiempo")
+
+# Convertir la columna "algoritmo" a factor para análisis de ANOVA
+datos[["algoritmo"]] <- factor(datos[["algoritmo"]])
+
+# Comprobación de normalidad utilizando gráficos Q-Q para cada algoritmo
+g <- ggqqplot(datos, x = "tiempo", y = "algoritmo", color = "algoritmo")  # Crear el gráfico Q-Q
+g <- g + facet_wrap(~ algoritmo)  # Crear un gráfico separado por algoritmo
+g <- g + rremove("x.ticks") + rremove("x.text")  # Eliminar las marcas y etiquetas del eje X
+g <- g + rremove("y.ticks") + rremove("y.text")  # Eliminar las marcas y etiquetas del eje Y
+g <- g + rremove("axis.title")  # Eliminar los títulos de los ejes
+print(g)  # Mostrar el gráfico
+
+# Procedimiento ANOVA utilizando la función aov()
+# Se realiza un análisis de varianza con error dentro de sujetos, donde "instancia" es el sujeto
+prueba1 <- aov(tiempo ~ algoritmo + Error(instancia/(algoritmo)), data = datos)
+
+# Imprimir el resultado de la prueba ANOVA realizada con aov()
+cat("Resultado de la prueba con aov()\n")
+print(summary(prueba1))  # Mostrar el resumen del análisis ANOVA
+
+# Procedimiento ANOVA utilizando ezANOVA()
+# Esta función realiza ANOVA para factores dentro de sujetos de forma simplificada
+prueba2 <- ezANOVA(data = datos, dv = tiempo, within = algoritmo, wid = instancia, return_aov = TRUE)
+
+# Imprimir el resultado de la prueba ANOVA realizada con ezANOVA()
+cat("Resultado de la prueba con ezANOVA()\n")
+print(summary(prueba2[["aov"]]))  # Mostrar el resumen de ANOVA
+
+# Mostrar el resultado de la prueba de esfericidad de Mauchly, que verifica si la varianza de las diferencias es homogénea
+print(prueba2[["Mauchly's Test for Sphericity"]])
+
+# Mostrar los factores de corrección en caso de que no se cumpla la condición de esfericidad
+cat("\nFactores de corrección cuando no se cumple la condicion de esfericidad\n")
+print(prueba2[["Sphericity Corrections"]])
+
+# Gráfico del tamaño del efecto
+# Generar un gráfico de barras para visualizar el tiempo promedio de ejecución por algoritmo
+g2 <- ezPlot(data = datos, dv = tiempo, wid = instancia, within = algoritmo, 
+             y_lab = "Tiempo promedio de ejecución [ms]", x = algoritmo)
+
+# Aplicar un tema visual de ggpubr para mejorar la apariencia del gráfico
+g2 <- g2 + theme_pubr()
+
+# Mostrar el gráfico con el tamaño del efecto
+print(g2)
+
+```
+
+Procedimientos Post-Hoc: 
+
+
+se asigna el valor TRUE al argumento paired de la funcion pairwise.t.test()
+
+```{r}
+library(nlme)
+library(emmeans)
+
+# Procedimiento de Bonferroni
+
+bonferroni <- pairwise.t.test(datos[["tiempo"]], datos[["algoritmo"]], p.adj = "bonferroni", paired = TRUE)
+
+print(bonferroni)
+
+# Procedimiento de Holm
+
+holm <- pairwise.t.test(datos[["tiempo"]], datos[["algoritmo"]], p.adj = "holm", paired = TRUE)
+
+print(holm)
+
+# Procedimiento post-hoc de Tukey (probablemente no lo vayamos a usar)
+
+mixto <- lme(tiempo ~ algoritmo, data = datos, random = ~ 1|instancia)
+
+medias <- emmeans(mixto, "algoritmo")
+tukey <- pairs(medias, adjust = "tukey")
+
+print(tukey)
+
+ # Procedimiento post-hoc de Scheffe
+
+scheffe <- pairs(medias, adjust = "scheffe")
+
+print(scheffe)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
