@@ -1,0 +1,26 @@
+---
+title: "Lectura 4"
+author: "Mohamed Al-Marzuk"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Pregunta 7 y 8 de lectura 4
+
+```{r}
+library(pwr)
+n <- 24
+desviacion <- 14
+alfa <- 0.01
+variacion <- 0.8
+potencia <- 0.8
+
+d <- variacion/desviacion
+
+resultado <- pwr.t.test(d = d, sig.level = alfa, 
+                        power = potencia, type = "two.sample",
+                        alternative = "greater")
+resultado
+
+
+```

@@ -1,24 +1,70 @@
 ---
-title: "Lectura 4"
-author: "Mohamed Al-Marzuk"
+title: "Lectura 3"
+author: "Mohamed y Benjamin"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
+La lectura 3 trata de inferencias con medias muestrales.
+
+La prueba Z para una muestra debe cumplir las siguientes condiciones:
+
+1) Observaciones independientes
+2) La población de origen de la muestra sigue aproximadamente una distribución normal
+3) La muestra debe tener al menos 30 observaciones. Si son menos de 30, se debe conocer la varianza para usarla.
+
+Sirve para asegurar o descartar que la media tiene un cierto valor hipotético.
+
 ```{r}
-library(pwr)
-n <- 24
-desviacion <- 14
+library(TeachingDemos) #Aquí está el z.test
+library(ggpubr)
+
+# Ingresar datos
+
+muestra <- c(19.33, 29.37, 29.14, 32.10, 25.04, 22.22, 31.26, 26.92, 31.40, 17.66, 22.55, 20.69, 24.68, 28.74, 26.85, 29.68, 29.27, 26.72, 27.08, 20.62)
+
+# Establecer los datos conocidos
+
+desv_est <- 2.32
+n <- length(muestra)
+valor_nulo <- 20
+
+# Gráfico Q-Q para verificar la distribución de la muestra
+
+datos <- data.frame(muestra)
+
+g <- ggqqplot(datos, x = "muestra", color = "SteelBlue")
+print(g)
+
+# Test de normalidad de Shapiro-Wilk
+
+normalidad <- shapiro.test(muestra)
+print(normalidad)
+
+# Fijar un nivel de significancia
 alfa <- 0.01
-variacion <- 0.8
-potencia <- 0.8
 
-d <- variacion/desviacion
+# Calcular la media de la muestra
+media <- mean(muestra)
+cat("Media =", media, "M$\n")
 
-resultado <- pwr.t.test(d = d, sig.level = alfa, 
-                        power = potencia, type = "two.sample",
-                        alternative = "greater")
-resultado
+# calcular el estadístico
+Z <- (media - valor_nulo) / (desv_est/sqrt(n))
+cat("Z =", Z, "\n")
 
+# Calcular el valor p
+p <- 2 * pnorm(Z, lower.tail = FALSE)
+cat("p =", p, "\n")
 
+#Hacer la prueba Z con R usando la media muestral y el tamaño de la muestra
+
+prueba1 <- z.test(media, mu = valor_nulo, n = 20, alternative = "two.sided", stdev = desv_est, conf.level = 1-alfa)
+
+print(prueba1)
+
+# Hacer la prueba usando la muestra
+prueba2 <- z.test(muestra, mu = valor_nulo, alternative = "two.sided", stdev = desv_est, conf.level = 1-alfa)
+print(prueba2)
 ```
+
+Prueba T de student

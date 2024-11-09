@@ -147,9 +147,11 @@ data <- mtcars
 # Renombrar columnas
 data <- data %>% rename(Rendimiento = mpg, Cilindrada = cyl, Desplazamiento = disp, Potencia = hp, Eje = drat, Peso = wt, Cuarto_milla = qsec, Motor = vs, Transmision = am, Cambios = gear, Carburadores = carb)
 
-# Dar formato categórico a las variables Motor y Transmision, renombrando a sus niveles
+# Dar formato categórico a las variables Motor y Transmision, renombrando a sus niveles. 0 y 1 pasan a ser V y Recto
 
 data[["Motor"]] <- factor(data[["Motor"]], levels = c(0, 1), labels = c("V", "Recto"))
+
+# 0 y 1 pasan a er Automatico y Manual
 
 data[["Transmision"]] <- factor(data[["Transmision"]], levels = c(0, 1), labels = c("Automático, Manual"))
 
@@ -158,9 +160,5 @@ data[["Transmision"]] <- factor(data[["Transmision"]], levels = c(0, 1), labels 
 data[["Cilindrada"]] <- factor(data[["Cilindrada"]], levels = c(4, 6, 8), labels = c("4 cilindros", "6 cilindros", "8 cilindros"), ordered = TRUE)
 
 data[["Cambios"]] <- factor(data[["Cambios"]], levels = c(3, 4, 5), labels = c("3 cambios", "4 cambios", "5 cambios"), ordered = TRUE)
-
-write.csv2(data, "aaaalo.csv")
-
-
 
 ```
