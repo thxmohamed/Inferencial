@@ -1,0 +1,96 @@
+---
+title: "Lectura9"
+author: "Mohamed y Benjamin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Pruebas no paramétricas con una y dos muestras numéricas
+
+1) Prueba de suma de rangos de Wilcoxon
+
+Es una alternativa no paramétrica a la prueba t de Student para dos muestras independientes, y tiene las siguientes condiciones:
+
+1) Las observaciones de ambas muestras son independientes
+2) La escala de medición debe ser, a lo menos, ordinal
+
+Ejemplo: se desea evaluar la usabilidad de dos interfaces alternativas, A y B, para un nuevo producto de software. Con este fin, la empresa selecciona al azar a 23 voluntarios/as quienes son asignados de manera aleatoria a dos grupos, cada uno de los cuales debe probar una de las interfaces. nA = 12 y nB = 11. Cada participante debe evaluar 6 aspectos de usabilidd de la interfaz, con una escala Likert del 1 al 7, donde 1 es muy malo y 7 muy bueno. LA valoración de cada participante corresponde al promedio simple de las valoraciones a esos 6 aspectos.
+
+Si bien se cumple la condicion de independencia, no podemos ocupar la prueba t de Student porque no podemos asegurar que la escala Likert es de igual intervalo. Además, las distribuciones no se asemejan a una normal
+
+Como alternativa usamos esta prueba, cuyas hipótesis son:
+
+H0: no hay diferencia en la usabilidad de ambas interfaces (los valores se distribuyen de igual forma)
+
+HA: Sí hay diferencia en la usabilidad de ambas interfaces (los valores se distribuyen de distinta forma)
+
+```{r}
+
+# Ingresar los datos
+
+interfaz_A <- c(2.7, 6.6, 1.6, 5.1, 3.7, 6.1, 5.0, 1.4, 1.8, 1.6, 3.0, 5.4)
+
+interfaz_B <- c(5.0, 1.4, 5.6, 4.6, 6.7, 2.7, 1.4, 6.3, 3.6, 1.6, 6.5)
+
+# Establecer nivel de significancia
+
+alfa <- 0.05
+
+# Hacer la prueba
+
+prueba <- wilcox.test(interfaz_A, interfaz_B, alterntive = "two.sided", conf.level = 1 - alfa)
+print(prueba)
+
+```
+
+Prueba de rangos con signo de Wilcoxon
+
+corresponde a la alternativa no paramétrica de la prueba t de student para muestras apareadas. Sus condiciones son:
+
+1) Los pares de observaciones son independientes
+2) LA escala de medición empleada para ambas muestras debe ser a lo menos ordinal
+
+Ejemplo: Supongamos que otra vez queremos evaluar la usabilidad de dos interfaces distintas, A y B, para determinar si es mejor la interfaz A. Para ello, se seleccionan a 10 participantes al azar, quienes deben evaluar 6 aspectos de usabilidad de cada interfaz, cada uno de los cuales se mide con una escala Likert de 7 puntos. Designados aleatoriamente, 5 participantes evaluaron primero la interfaz A, mientras que los otros 5 evaluron primero la interfaz B.
+
+H0: Las mismas personas no perciben diferencias en la usabilidad de ambas interfaces
+
+HA: las mismas personas considern que la interfaz A tiene mejor usabilidad que la interfaz B
+
+
+```{r}
+
+# ingresar los datos
+
+interfaz_A <- c(2.7, 6.6, 6.1, 4.7, 6.1, 5.0, 1.4, 2.8, 3.0, 6.4)
+
+interfaz_B <- c(6.0, 2.8, 1.3, 4.7, 3.1, 4.0, 2.9, 2.3, 1.8, 1.6)
+
+# Establecer nivel de significancia
+
+alfa <- 0.05
+
+# Hacer la prueba de rangos con signo de Wilcoxon
+
+prueba <- wilcox.test(interfaz_A, interfaz_B, paired = TRUE, alterntive = "greater", conf.level = 1 - alfa)
+print(prueba)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
