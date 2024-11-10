@@ -1,0 +1,161 @@
+---
+title: "Lectura 6-procedimiento ANOVA para muestras independientes"
+author: "Benjamin Bustamante"
+date: "2024-11-10"
+output: html_document
+---
+
+ANOVA de una vía se tiende a utilizar cuando se tienen tres o más grupos y se desea comparar las medias de los grupos, dejando atras la gran probabilidad de comenter un error del tipo I. Acá, solo se define una variable independiente donde sus niveles se están comparando.
+
+Para aplicar el ANOVA de una vía, se deben cumplir las siguentes condiciones:
+
+1. Las observaciones son independientes y escogidas de manera aleatoria.
+2. La escala de la variable dependiente tiene una escala de intervalos iguales.
+3. La población de origen de cada grupo tiene una distribución normal.
+4. Si provienen de más de una población, las varianzas de las poblaciones son iguales.
+
+Para poder llevar esto a R, se ve en el siguente ejemplo:
+
+Ejemplo: Comparación de algoritmos mediante ANOVA de una vía
+ 
+Una ingeniera se enfrenta a un problema de logística en una empresa de reparto de último kilómetro. 
+Ha logrado modelar instancias del problema de la mochila 0-1 con capacidad 1,000 y objetos con pesos 
+que se distribuyen según N(50, 16). Para resolver este problema, implementó tres algoritmos (A, B y C) 
+y desea comparar su eficiencia. Para cada algoritmo, generó de forma aleatoria cinco instancias, cada una 
+con 100 elementos. Los tiempos de ejecución registrados (en milisegundos) fueron:
+ 
+- Algoritmo A: 23, 19, 25, 23, 20
+- Algoritmo B: 26, 24, 28, 23, 29
+- Algoritmo C: 19, 24, 20, 21, 17
+
+Hipótesis:
+Ho: El tiempo de ejecución promedio es igual para los tres algoritmos. 
+ Matemáticamente: μ_A = μ_B = μ_C
+Ha: Al menos un algoritmo tiene un tiempo de ejecución promedio diferente.
+ Matemáticamente: μ_A ≠ μ_B ≠ μ_C
+ 
+```{r}
+library(tidyverse)
+library(ez)
+library(ggpubr)
+A <- c(23, 19, 25, 23, 20)
+B <- c(26, 24, 28, 23, 29)
+C <- c(19, 24, 20, 21, 17)
+
+datos <- data.frame(A, B, C)
+
+datos <- datos %>% pivot_longer(cols = c("A","B","C"), names_to = "Algoritmo", values_to = "Tiempo")
+
+datos[["Algoritmo"]] <- factor(datos[["Algoritmo"]])
+datos[["Instancia"]] <- factor(1:nrow(datos))
+#Para comprobar la normalidad de los datos
+
+#Existen 2 formas de realizar anova con aov o ezANOVA
+
+prueba <- aov(Tiempo ~ Algoritmo, data = datos)
+summary(prueba)
+
+prueba2 <- ezANOVA(data = datos, dv = Tiempo, wid = Instancia, between = Algoritmo, return_aov = TRUE)
+prueba2
+
+g2 <- ezPlot(data = datos, x = Algoritmo, dv = Tiempo, wid = Instancia, between = Algoritmo) +
+  labs(y = "Tiempo de ejecución (ms)") + 
+  theme_pubr()
+
+g2
+#Nos muestra graficamente el tamaño del efecto de cada algoritmo.
+
+```
+ 
+En base a los resultados obtenidos, tenemos que existe un algoritmo que tiene un tiempo de ejecución promedio diferente a los demás. Para saber donde existe dicha diferencia, tenemos que realizar métodos post-hoc.
+
+Bonferroni y Holm:
+
+```{r}
+library(tidyverse)
+library(ez)
+library(ggpubr)
+A <- c(23, 19, 25, 23, 20)
+B <- c(26, 24, 28, 23, 29)
+C <- c(19, 24, 20, 21, 17)
+
+datos <- data.frame(A, B, C)
+
+datos <- datos %>% pivot_longer(cols = c("A","B","C"), names_to = "Algoritmo", values_to = "Tiempo")
+
+datos[["Algoritmo"]] <- factor(datos[["Algoritmo"]])
+datos[["Instancia"]] <- factor(1:nrow(datos))
+
+bonferroni <- pairwise.t.test(datos[["Tiempo"]], datos[["Algoritmo"]], p.adjust.method = "bonferroni", pool.sd = TRUE, paired = FALSE,conf.level = 0.975)
+
+bonferroni
+
+holm <- pairwise.t.test(datos[["Tiempo"]], datos[["Algoritmo"]], p.adjust.method = "holm", pool.sd = TRUE, paired = FALSE,conf.level = 0.975)
+
+holm
+```
+
+En base a los resultados obtenidos, tenemos que los algoritmos B y C existe una diferencia(B/C < alfa). Bonferroni, tiende a ser más conservadora con los resultados de comparación de medias.
+
+Tukey: Es un método mucho más poderoso que los anteriores y se basa en el estadistico Q.
+
+```{r}
+library(tidyverse)
+library(ez)
+library(ggpubr)
+
+A <- c(23, 19, 25, 23, 20)
+B <- c(26, 24, 28, 23, 29)
+C <- c(19, 24, 20, 21, 17)
+
+datos <- data.frame(A, B, C)
+datos <- datos %>% pivot_longer(cols = c("A","B","C"), names_to = "Algoritmo", values_to = "Tiempo")
+datos[["Algoritmo"]] <- factor(datos[["Algoritmo"]])
+datos[["Instancia"]] <- factor(1:nrow(datos))
+
+prueba <- aov(Tiempo ~ Algoritmo, data = datos)
+prueba
+
+tukey <- TukeyHSD(prueba,"Algoritmo",ordered=TRUE, conf.level = 0.975)
+
+tukey
+```
+
+En base a los resultados obtenidos, tenemos que los algoritmos B y C existe una diferencia(B/C < alfa).
+
+Scheffe: Es un método conservador, que permite realizar comparaciones adicionales entre los grupos.
+
+```{r}
+library(tidyverse)
+library(ez)
+library(ggpubr)
+library(DescTools)
+A <- c(23, 19, 25, 23, 20)
+B <- c(26, 24, 28, 23, 29)
+C <- c(19, 24, 20, 21, 17)
+
+datos <- data.frame(A, B, C)
+datos <- datos %>% pivot_longer(cols = c("A","B","C"), names_to = "Algoritmo", values_to = "Tiempo")
+datos[["Algoritmo"]] <- factor(datos[["Algoritmo"]])
+datos[["Instancia"]] <- factor(1:nrow(datos))
+
+prueba <- aov(Tiempo ~ Algoritmo, data = datos)
+prueba
+
+contrastes <- matrix(c(1, -1, 0,
+                       1, 0, -1,
+                       0, 1, -1,
+                       1, -0.5, -0.5,
+                       -0.5, 1, -0.5,
+                       -0.5, -0.5, 1),
+                     nrow = 6, byrow = TRUE)
+
+contrastes <- t(contrastes)
+
+scheffe <- ScheffeTest(prueba, which="Algoritmo", contrasts = contrastes, conf.level = 0.975)
+
+scheffe
+```
+
+Scheffe entrega muchas más comparaciones mediante contrastes y entrega un valor de p ajustado para cada constraste e identifica los relevantes.
+

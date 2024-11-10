@@ -1,0 +1,179 @@
+---
+title: "Lectura 2- Variables aleatorias y distribuciones de probabilidad"
+author: "Benjamin Bustamante"
+date: "2024-11-08"
+output: html_document
+---
+
+Variable aleatoria discreta: Toma valores distintos de 0 en un conjunto finito o infinito numerable.
+
+Valor esperado: Resultado promedio de un experimento aleatorio, se calcula como la suma de los productos de cada valor de la variable aleatoria por su probabilidad.
+
+Varianza: Que tan alejado está un valor de la media, se calcula como la suma de los productos de cada valor de la variable aleatoria por su probabilidad, menos el valor esperado al cuadrado.
+
+Llevado esto a R tenemos:
+
+```{r}
+#library(discreteRV)# Dicha libreria no me funciona xd
+#La variable aleatoria discreta es un dado adulterado de 6 caras
+resultados <- 1:6
+probabilidades <- c(0.25, 0.125, 0.125, 0.125, 0.125, 0.25)
+
+# Calcular el valor esperado
+valor_esperado <- sum(resultados * probabilidades)
+cat("Valor esperado:", valor_esperado, "\n")
+
+# Calcular la varianza
+varianza <- sum(probabilidades * (resultados - valor_esperado)^2)
+cat("Varianza:", varianza, "\n")
+
+# Calcular la desviación estándar
+desviacion_estandar <- sqrt(varianza)
+cat("Desviación estándar:", desviacion_estandar, "\n")
+
+```
+
+Ahora, quiero graficar las distribuciones de probabilidad de cada resultado del dado adulterado.
+
+```{r}
+library(ggpubr)
+resultados <- 1:6
+probabilidades <- c(0.25, 0.125, 0.125, 0.125, 0.125, 0.25)
+
+# Función para simular lanzamientos y calcular la suma
+simular_suma <- function(n, resultados, probabilidades) {
+  suma <- replicate(10000, sum(sample(resultados, size = n, replace = TRUE, prob = probabilidades)))
+  return(suma)
+}
+
+# Simular las sumas de los lanzamientos
+lanzar_5 <- simular_suma(5, resultados, probabilidades)
+lanzar_10 <- simular_suma(10, resultados, probabilidades)
+lanzar_20 <- simular_suma(20, resultados, probabilidades)
+
+# Configurar el espacio para 3 gráficos
+par(mfrow = c(1, 3))
+
+# Graficar los histogramas
+hist(lanzar_5, breaks = 20, main = "Lanzamiento de 5 dados", xlab = "Suma de resultados", ylab = "Frecuencia", col = "lightblue", probability = TRUE)
+hist(lanzar_10, breaks = 20, main = "Lanzamiento de 10 dados", xlab = "Suma de resultados", ylab = "Frecuencia", col = "lightgreen", probability = TRUE)
+hist(lanzar_20, breaks = 20, main = "Lanzamiento de 20 dados", xlab = "Suma de resultados", ylab = "Frecuencia", col = "lightcoral", probability = TRUE)
+
+```
+Por lo general, es más adecuado para modelar un fenomeno como una combinación de variables aleatorias, en lugar de una sola variable aleatoria. Por ejemplo, si se quiere modelar el tiempo que se tarda en llegar a un lugar, se puede modelar como una combinación de la velocidad y la distancia. Estas, tienen que ser independientes entre sí y así, poder calcular el valor esperado y la varianza ded dicha combinación lineal.
+
+```{r}
+# Valores y probabilidades del dado adulterado
+resultados <- 1:6
+prob_adulterado <- c(0.25, 0.125, 0.125, 0.125, 0.125, 0.25)
+
+# Valores y probabilidades del dado balanceado
+prob_balanceado <- rep(1/6, 6)
+
+# Calcular el valor esperado del dado adulterado
+esperado_x <- sum(resultados * prob_adulterado)
+
+# Calcular la varianza del dado adulterado
+varianza_x <- sum((resultados - esperado_x)^2 * prob_adulterado)
+
+# Calcular la desviación estándar del dado adulterado
+desviacion_x <- sqrt(varianza_x)
+
+cat("E(X):", esperado_x, "\n")
+cat("V(X):", varianza_x, "\n")
+cat("SD(X):", desviacion_x, "\n\n")
+
+# Calcular el valor esperado del dado balanceado
+esperado_y <- sum(resultados * prob_balanceado)
+
+# Calcular la varianza del dado balanceado
+varianza_y <- sum((resultados - esperado_y)^2 * prob_balanceado)
+
+# Calcular la desviación estándar del dado balanceado
+desviacion_y <- sqrt(varianza_y)
+
+cat("E(Y):", esperado_y, "\n")
+cat("V(Y):", varianza_y, "\n")
+cat("SD(Y):", desviacion_y, "\n\n")
+
+# Crear una combinación lineal de ambas variables aleatorias
+# Z = 0.5 * X + 0.5 * Y
+coef_x <- 0.5
+coef_y <- 0.5
+
+# Calcular el valor esperado de Z
+esperado_z <- coef_x * esperado_x + coef_y * esperado_y
+
+# Calcular la varianza de Z
+varianza_z <- (coef_x^2) * varianza_x + (coef_y^2) * varianza_y
+
+# Calcular la desviación estándar de Z
+desviacion_z <- sqrt(varianza_z)
+
+cat("E(Z):", esperado_z, "\n")
+cat("V(Z):", varianza_z, "\n")
+cat("SD(Z):", desviacion_z, "\n")
+
+```
+
+Variables aleatorias continuas: Estas variables pueden tomar infinitos valores dentro de un rango específico. Su probabilidad se calcula en intervalos, no en valores exactos, mediante una función de densidad de probabilidad.
+
+El área bajo la curva de la función de densidad de probabilidad es igual a 1.
+
+Por lo tanto, las probabiliades se calculan mediante la integral de la función de densidad de probabilidad en un intervalo específico.
+
+Existen multiples distribuciones de probabilidad continuas, entre las más comunes se encuentran:
+
+Distribución normal: Tambien conocida como distribución gausseana, es la más común en estadística. Se caracteriza por tener una forma de campana y estar centrada en un valor esperado. La desviacón estandar determina que tan ancha o angosta es la campana y la media desplaza el centro . Es unimodal y simétrica.
+
+```{r}
+library(ggplot2)
+library(ggpubr)
+
+# Generar valores para una distribución normal con media 0 y desviación estándar 1.
+media <- 0
+desv_est <- 1
+x <- seq(-15, 35, 0.01)
+y <- dnorm(x, mean = media, sd = desv_est)
+normal_1 <- data.frame(x, y)
+
+# Repetir el proceso para una distribución normal con media 10 y desviación estándar 6.
+media <- 10
+desv_est <- 6
+x <- seq(-15, 35, 0.01)
+y <- dnorm(x, mean = media, sd = desv_est)
+normal_2 <- data.frame(x, y)
+
+# Graficar ambas distribuciones.
+g <- ggplot(normal_1, aes(x, y)) + geom_line(color = "blue")
+g <- g + geom_line(data = normal_2, color = "red")
+g <- g + theme_pubr()
+
+print(g)
+```
+
+Se utiliza mucho la comprobación de que los datos sigan una distribución normal, por lo que se utilizan pruebas de normalidad como la prueba de Shapiro-Wilk o la prueba de Kolmogorov-Smirnov.
+
+Distribución Z : Es una distribución normal, pero estandarizada, es decir, con media 0 y desviación estándar 1. Se utiliza para comparar valores de diferentes distribuciones normales. Indica que tan bajo o encima de la media se encuentra un valor.
+
+Distribución chi cuadrado: 
+Distrbución t de Student:
+Distribución F de Snedecor:
+
+
+Distribuciones discretas
+
+Distribución de Bernoulli: Es una distribución de probabilidad discreta que toma valor 1 con probabilidad p y valor 0 con probabilidad 1-p. Se utiliza para modelar experimentos con dos posibles resultados.
+
+Distrbución geométrica: Es una distribución de probabilidad discreta que modela el número de fracasos antes de obtener el primer éxito en una secuencia de experimentos de Bernoulli independientes.
+
+Distribución binomial: Es una distribución de probabilidad discreta que modela el número de éxitos en una secuencia de n experimentos de Bernoulli independientes.
+
+Distrbución binomial negativa: Es una distribución de probabilidad discreta que modela el número de experimentos de Bernoulli independientes necesarios para obtener r éxitos.
+
+Distribución de Poisson: Es una distribución de probabilidad discreta que modela el número de eventos que ocurren en un intervalo de tiempo fijo o en un área fija.
+
+
+Estimadores puntuales: Son valores calculados a partir de una muestra que se utilizan para estimar un parámetro poblacional. Por ejemplo, la media muestral es un estimador puntual de la media poblacional.
+
+

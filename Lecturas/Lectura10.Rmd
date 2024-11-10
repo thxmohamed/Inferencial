@@ -1,0 +1,100 @@
+---
+title: "Lectura 10-métodos clásicos para enfrentar datos problemáticos: métodos no paramétricos con más de dos muestras numéricas"
+output: html_document
+date: "2024-11-09"
+---
+
+En esta lectura se presentan alternativas no parametricas para poder aplicar ANOVA de una vía.
+
+Prueba de Kruskal-Wallis:
+
+Acá, se emplea cuando se tienen más de dos muestras y no se cumple con los supuestos de normalidad y homocedasticidad.También, cuando las muestras no tienen la misma cantidad de datos.
+
+Condiciones:
+1. La variable independiente tiene que poseer 2 niveles o más.
+2. La variable dependiente tiene que ser por lo menos ordinal.
+3. Las muestras deben ser independientes.
+
+Las hipotesis se plantean en base ambas variables funcionan de la misma forma o existe un grupo que genere las diferencias.
+
+Ejemplo:
+
+H.nula : Los criterios de consultas son igual de eficientes.
+H.alterna: Al menos un criterio de consulta es diferente.
+
+```{r}
+#Se van a tener 4 operaciones que se realizan mediente distintos algoritmos
+A <- c(24,23,26,21,24,24,25,22,23,22,23,23)
+B <- c(17,15,18,20,19,21,20,18,19)
+C <- c(10,11,14,11,15,12,12,10,9,13,12,12,10,10)
+D <- c(18,16,18,15,16,15,18,16)
+
+tiempo <- c(A,B,C,D)
+criterio <- c(rep("A",12),rep("B",9),rep("C",14),rep("D",8))
+criterio <- factor(criterio)
+
+datos <- data.frame(tiempo,criterio)
+
+alfa <- 0.01
+
+prueba <- kruskal.test(tiempo ~ criterio, data=datos)
+prueba
+
+
+```
+
+Para pruebas post-hoc, se puede realizar Benjamini & Hochberg o Holm. Como en este caso, el valor de alfa mayor al p-value, se tiene que realizar este tipo de pruebas. Con esto, como son hipotesis del tipo omnibus, se tiene que realizar pruebas post-hoc para determinar cuales son los grupos que generan las diferencias.
+
+```{r}
+post_hoc <- pairwise.wilcox.test(datos$tiempo, datos$criterio, p.adjust.method = "BH",paried=FALSE,exact=FALSE)
+print(post_hoc)
+```
+
+Prueba de Friedman:
+Esta prueba posee un nivel estadistico de menor significancia que el de Kruskal-Wallis. Este método se emplea cuando la variable dependiente no se puede comprobar que sea en intervalos iguales.
+
+Algunas condiciones:
+
+1.La variable independiente tiene que se categorica y tener al menos 3 niveles.
+2.La escala de la variable tiene que ser , a lo menos, ordinal.
+3. Muestra aleatoria e independiente de la población.
+
+Ejemplo:
+
+Se ponen a prueba 3 interfaces gráficas (A,B,C), donde el usuario califica la interfaz del 1 al 5 en una escala de Likert donde el 1 representa una valoración muy negativa y el 5 una muy positiva
+
+Ho: Las interfaces obtienen indices similares
+Ha: Al menos una interfaz obtiene indices distinos.
+
+```{r}
+#Se pasan los datos para realizar las pruebas
+
+A<- c(21,10,7,21,24,27,17)
+B<- c(6,21,18,7,24,13,13)
+C <- c(13,25,18,20,24,8,29)
+
+puntuacion <- c(A,B,C)
+interfaz <- c(rep("A",7),rep("B",7),rep("C",7))
+caso <- rep(1:7,3)
+interfaz <- factor(interfaz)
+datos <- data.frame(caso,puntuacion,interfaz)
+
+alfa <- 0.05
+
+prueba <- friedman.test(puntuacion ~ interfaz | caso, data=datos)
+print(prueba)
+```
+
+El este caso, el valor que sale de p es mayor que el alfa. Esto indica que no se puede rechazar la hipotesis nula. Por lo tanto, se puede decir que las interfaces obtienen indices similares.
+
+Si hubiera sido necesario realizar pruebas post-hoc, se puede realizar mediante el método de Holm. Aca, el apartado de la función pairwise.wilcox.test donde se encuentra paired=FALSE, se debe cambiar a TRUE.
+
+Recuerdo, condiciones para ANOVA de una vía:
+
+La escala con la que se mide la variable independiente tiene las propiedades de un escala de 2 intervalos iguales.
+Las mediciones son independientes al interior de cada grupo.
+La población sigue una distribución normal.
+La matriz de varianzas-covarianzas es esférica.
+
+
+

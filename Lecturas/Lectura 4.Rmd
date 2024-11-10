@@ -1,0 +1,116 @@
+---
+title: "Lectura 4 - poder estadístico"
+author: "Benjamin Bustamante"
+date: "2024-11-10"
+output: html_document
+---
+
+En la lectura pasada, se da a conocer alfa **(α)**, el cual es el nivel de significancia que se utiliza para determinar si se rechaza o no la hipótesis nula. En esta lectura se introduce el concepto de **β** que es la probabilidad de cometer un error de tipo II, es decir, no rechazar la hipótesis nula cuando es falsa. También, se presenta el poder estadístico **(1-β)**, el cual es la probabilidad de rechazar la hipótesis nula cuando esta es falsa. Otro concepto que vale la pena destacar es el tamaño del efecto, que es la diferencia entre dos grupos que se estan estudiando.Nos entrega si la diferencia observada tiene relevancia en el mundo real, es decir, si es significativa.
+
+Se van presentar alternativas para medir el tamaño del efecto.
+
+Potencia de la prueba Z:
+
+El tamaño del efecto viene dado por la diferencia de las medias de los dos grupos. Por lo general, las hipotesis se basan en ver si la media de un grupo es igual o dista a un valor x. Para poder calcular esto, necesitamos saber el valor de la media nula, el sigma y el tamaño de la muestra.
+
+Un ejemplo de esto es el siguiente(el que se encuentra en la lectura):
+```{r}
+library(ggplot2)
+library(ggpubr)
+library(pwr)
+
+alfa <- 0.05
+n <- 36
+media_nula <- 60
+sigma <- 12
+#Calculo del error estandar
+SE <- sigma / sqrt(n)
+
+z_critico_inferior <- qnorm(alfa / 2, mean = media_nula, sd = SE, lower.tail = TRUE)
+z_critico_superior <- qnorm(alfa / 2, mean = media_nula, sd = SE, lower.tail = FALSE)
+#Se plantean las medias verdaderas
+media_verdadera <- 55.8
+delta <- media_nula - media_verdadera
+d <- delta / sigma
+
+# Calcular el poder de la prueba Z bilateral usando pwr.norm.test
+poder <- pwr.norm.test(d = d, n = n, sig.level = alfa, alternative = "two.sided")
+poder
+
+```
+
+
+Poder vs tamaño del efecto:
+
+El poder la prueba va en aumento si el tamaño del efecto es mayor. Si el tamaño del efecto es pequeño, el poder de la prueba disminuye.
+
+Poder vs nivel de significación:
+
+Esta relación es inversamente proporcional, es decir, si el nivel de significación es mayor, el poder de la prueba disminuye. Si el nivel de significación es menor, el poder de la prueba aumenta.
+
+Poder vs tamaño de la muestra:
+
+El poder de la prueba aumenta a medida que el tamaño de la muestra aumenta. Si el tamaño de la muestra es pequeño, el poder de la prueba disminuye. Por lo tanto, es directamente proporcional.
+
+Prueba t de Student:
+
+Es similar a la prueba Z, pero se utiliza cuando no se conoce la desviación estándar de la población. Cuando es solo una muestra, se compara la media de la muestra con la media de la población. Cuando son dos muestras, se comparan las medias de dos grupos.
+
+Se usa :
+pwr.t.test cuando se tiene una muestra, pwr.2tn.test cuando se tienen dos muestras independientes con diferentes tamaños.
+También, he de destacar que se tiene que emplear algo llamado d de Cohen que es el tamaño del efecto. Este se calcula dividiendo la diferencia de las medias entre la desviación estándar de la población.
+
+Potencia de la prueba t de Student:
+
+Para calcular la potencia de la prueba t de Student, se puede usar la función pwr.t.test o pwr.2p.test o pwr.2p2n.test. Su uso recae en si se tiene una muestra, dos muestras independientes con el mismo tamaño o dos muestras independientes con diferentes tamaños.
+
+Un ejemplo:
+Se encontró que las nuevas y los nuevos estudiantes de Educación Física no están llegando con la preparación requerida. Se ha iniciado un programa piloto con 24 estudiantes que están comenzando esta carrera en que se someten a prolongados ejercicios de saltar la cuerda. En teoría, este programa debería mejorar su resistencia y bajar sus tiempos en completar 1,500 metros planos, que exhiben una distribución aproximadamente normal con desviación estándar de 14 [s]. El estudio tiene planificado emplear una prueba t con 99% confianza para determinar si hay una diferencia significativa en los tiempos registrados antes y después del programa.
+Y la pregunta específica es:
+¿Qué potencia tiene la prueba si se quiere detectar una reducción de 8 [s]?
+
+
+Del enunciado se puede sacar la siguiente información:
+
+1.El tamaño de la muestra es de 24 (n=24), que es el estudiantado sometido a los ejercicios de educación física.
+2.La desviación estándar es de 14 segundos.
+3.El alfa asociada es de 0.01, ya que se quiere usar una prueba t con una confianza del 99%
+4.La variación del tiempo es de 8 segundos.
+5.El tamaño del efecto de Cohen va a estar dado por la variación y la desviación estándar, es decir:
+
+d = 8 / 14 = 0.5714286
+
+6.Se tiene que utilizar una prueba t para muestras pareadas, donde se va ingresar como parametro "paired" y "two.sided" en los datos de type y alternative para la función en R.
+
+Con los datos anteriores, se traspasan al entorno de R y queda de la siguiente forma:
+
+
+Dado como resultado lo siguiente:
+
+```{r}
+library(pwr)
+n<-24
+desviacion<-14
+alfa<-0.01
+variacion<-8
+cohen <- variacion/desviacion
+potencia <- pwr.t.test(n = n, d = cohen, sig.level = alfa, type = "paired", alternative = "two.sided")
+potencia
+```
+
+Por lo tanto, la prueba que se nos plantea tiene una potencia del 0.509 aproximadamente. Esto quiere decir que se tiene un 50.9% de detectar dicha reducción de tiempo planteada.
+
+Si yo quisiera saber el tamaño de muestra que necesito para tener una potencia del 80%, se puede hacer de la siguiente forma:
+
+```{r}
+library(pwr)
+n<-24
+desviacion<-14
+alfa<-0.01
+variacion<-8
+potencia <- 0.8
+cohen <- variacion/desviacion
+potencia <- pwr.t.test( d = cohen, sig.level = alfa,power=potencia, type = "two.sample", alternative = "two.sided") #Se omite el valor de n y se agrega el valor del poder que se quiere obtener
+potencia
+```
+
