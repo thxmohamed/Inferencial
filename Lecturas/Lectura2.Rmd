@@ -154,11 +154,13 @@ print(g)
 
 Se utiliza mucho la comprobación de que los datos sigan una distribución normal, por lo que se utilizan pruebas de normalidad como la prueba de Shapiro-Wilk o la prueba de Kolmogorov-Smirnov.
 
-Distribución Z : Es una distribución normal, pero estandarizada, es decir, con media 0 y desviación estándar 1. Se utiliza para comparar valores de diferentes distribuciones normales. Indica que tan bajo o encima de la media se encuentra un valor.
+Distribución Z: Es una distribución normal, pero estandarizada, es decir, con media 0 y desviación estándar 1. Se utiliza para comparar valores de diferentes distribuciones normales. Indica qué tan bajo o encima de la media se encuentra un valor.
 
-Distribución chi cuadrado: 
-Distrbución t de Student:
-Distribución F de Snedecor:
+Distribución chi cuadrado: Es una distribución de probabilidad que se utiliza principalmente en pruebas de hipótesis y en la estimación de intervalos de confianza para la varianza de una población normal. Se define como la suma de los cuadrados de k variables aleatorias independientes, cada una con una distribución normal estándar.
+
+Distribución t de Student: Es una distribución de probabilidad que se utiliza cuando se estima la media de una población normalmente distribuida en situaciones donde el tamaño de la muestra es pequeño y la varianza poblacional es desconocida. Es similar a la distribución normal, pero con colas más gruesas.
+
+Distribución F de Snedecor: Es una distribución de probabilidad que se utiliza principalmente en el análisis de varianza (ANOVA) y en la comparación de dos varianzas. Se define como la razón de dos variables aleatorias chi cuadrado independientes, cada una dividida por sus grados de libertad.
 
 
 Distribuciones discretas
@@ -174,6 +176,65 @@ Distrbución binomial negativa: Es una distribución de probabilidad discreta qu
 Distribución de Poisson: Es una distribución de probabilidad discreta que modela el número de eventos que ocurren en un intervalo de tiempo fijo o en un área fija.
 
 
-Estimadores puntuales: Son valores calculados a partir de una muestra que se utilizan para estimar un parámetro poblacional. Por ejemplo, la media muestral es un estimador puntual de la media poblacional.
+Estimadores puntuales: Son valores calculados a partir de una muestra que se utilizan para estimar un parámetro poblacional. Por ejemplo, la media muestral es un estimador puntual de la media poblacional. A medida que uno aumenta la muestra, el estimador puntual se acerca al valor real del parámetro (ley de los grandes numeros).
 
+```{r}
+library(ggpubr)
 
+# Establecer la semilla para generar números aleatorios.
+set.seed(9437)
+
+# Generar aleatoriamente una población de tamaño 1500
+# (en este caso, con una distribución cercana a la normal).
+poblacion <- rnorm(n = 1500, mean = 4.32, sd = 0.98)
+
+# Calcular la media de la población.
+media_poblacion <- mean(poblacion)
+cat("Media de la población:", media_poblacion, "\n")
+
+# Tomar una muestra de tamaño 1250.
+tamano_muestra <- 1250
+muestra <- sample(poblacion, tamano_muestra)
+
+# Calcular las medias acumuladas (es decir, con muestras de
+# 1, 2, 3, ... elementos).
+n <- seq(along = muestra)
+media <- cumsum(muestra) / n
+
+# Crear una matriz de datos con los tamaños y las medias muestrales.
+datos <- data.frame(n, media)
+
+# Graficar las medias muestrales.
+g <- ggline(data = datos,
+            x = "n",
+            y = "media",
+            plot_type = "l",
+            color = "blue",
+            main = "Media móvil",
+            xlab = "Tamaño de la muestra",
+            ylab = "Media muestral")
+
+# Añadir al gráfico una recta con la media de la población.
+g <- g + geom_hline(aes(yintercept = media_poblacion),
+                    color = "red", linetype = 2)
+
+print(g)
+
+```
+
+Modelos estadisticos: Un modelo estadistico es una representación matemática de un fenomeno real. Se compone de una función de densidad de probabilidad y un conjunto de parametros que se ajustan a los datos. Se utilizan para hacer predicciones y tomar decisiones.
+
+Error estandar: Es la desviación de algún estimador respecto a su valor esperado. Se utiliza para medir la precisión de un estimador. Por ejemplo, el error estandar de la media esta dado por la desviación estandar de la población dividida por la raiz cuadrada del tamaño de la muestra. Con esto, este valor va a tender a 0 a medida que el tamaño de la muestra aumente.
+
+Intervalos de confianza: Rango de valores que puede tomar un valor de un estimador con un cierto nivel de confianza. Se calcula como el estimador puntual más o menos el error estandar multiplicado por el valor crítico de la distribución de probabilidad.
+
+Pruebas de hipotesis:Herramienta para determinar si existe suficiente evidencia en una muestra de datos para inferir que una afirmación es verdadera para toda una población. Se basa en plantear dos hipótesis.
+
+Se obtiene de esto un p-valie, el cual mide la probabilidad de observar los datos obtenidos si la hipótesis nula fuese cierta. Si el p-valor es menor que el nivel de significancia predefinido, se rechaza la hipótesis nula en favor de la alternativa.
+
+Inferencia para otros estimadores:
+
+Acá se habla de:
+
+Intervalos de confianza para proporciones, que permiten estimar el rango de valores de una proporción poblacional con un cierto nivel de confianza.
+Pruebas de hipótesis para comparar proporciones o varianzas entre grupos diferentes.
