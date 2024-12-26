@@ -1,0 +1,51 @@
+---
+title: "lect14"
+author: "Grupo 5"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(carData)
+data(Prestige)
+
+set.seed(123)
+prestige_sample <- Prestige[sample(nrow(Prestige), 100), ]
+
+folds <- cut(seq(1, nrow(prestige_sample)), breaks = 4, labels = FALSE)
+
+cross_validation <- function(data, formula) {
+  results <- data.frame(Fold = 1:4, RMSE = numeric(4), R2 = numeric(4))
+  
+  for (i in 1:4) {
+    test_indices <- which(folds == i, arr.ind = TRUE)
+    test_data <- data[test_indices, ]
+    train_data <- data[-test_indices, ]
+    
+    model <- lm(formula, data = train_data)
+    
+    predictions <- predict(model, newdata = test_data)
+    
+    actuals <- test_data$prestige
+    rmse <- sqrt(mean((predictions - actuals)^2))
+    r2 <- 1 - sum((predictions - actuals)^2) / sum((actuals - mean(actuals))^2)
+    
+    results$RMSE[i] <- rmse
+    results$R2[i] <- r2
+  }
+  
+  return(results)
+}
+
+formula <- prestige ~ income + education + women
+
+results <- cross_validation(prestige_sample, formula)
+
+print("Resultados por pliegue:")
+print(results)
+
+print("Promedio de métricas:")
+print(colMeans(results[, -1]))
+
+
+```

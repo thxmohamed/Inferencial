@@ -1,0 +1,82 @@
+---
+title: "Ejercicios"
+author: "Mohamed y Benjamin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Ejercicio 1 lect 9
+
+En la década de 1920 se hicieron los primeros estudios sobre la relación entre la velocidad de un automovil con la distancia que necesita para detenerse. Los datos de estas pruebas se pueden encontrar en el conjunto cars del paquete datasets. Con ellos, responde la siguiente pregunta: en promedio la distribución de las distancias necesitadas para detener vehículos antiguos que viajaban a más de 10 millas por hora ¿Se centra en un valor menor a 60 pies? No olvides verificar si se cumplen las condiciones de la prueba que estás ocupando.
+
+```{r}
+
+library(ggpubr)
+library(datasets)
+library(dplyr)
+
+datos <- cars
+
+datosFiltrados <- datos %>% filter(speed > 10)
+datosFiltrados
+
+ggqqplot(datosFiltrados$dist)
+
+# H0: La media de las distancias es igual a 60 pies
+# HA: La media de las distancias es menor a 60 pies
+
+valorNulo <- 60
+alfa <- 0.05
+
+# Ocupamos prueba t de student, porque estamos comparando la media de una muestra con un valor específico
+
+prueba <- t.test(datosFiltrados$dist, alternative = "less", mu = valorNulo, conf.level = 1 - alfa)
+print(prueba)
+
+```
+
+Pregunta 2 lect 9
+
+El conjunto airquality del paquete datasets contiene mediciones diarias de la calidad del aire en la ciudad de New York, EEUU, registradas de mayo a septiembre del año 1973. Verifica si la calidad del aire respecto del ozono es la misma durante los primeros 9 días de agosto que en los primeros 9 días de septiembre. Verificar si se cumplen las condiciones de las pruebas a usar.
+
+Utilizaremos la prueba de suma de rangos de Wilcoxon
+
+```{r}
+
+datos <- airquality
+datosAgosto <- datos %>% filter(Month == 8) %>% filter(Day <= 9) %>% select(Ozone)
+datosAgosto <- datosAgosto$Ozone
+
+datosSeptiembre <- datos %>% filter(Month == 9) %>% filter(Day <= 9) %>% select(Ozone)
+datosSeptiembre <- datosSeptiembre$Ozone
+
+tabla <- data.frame(datosAgosto, datosSeptiembre)
+tabla
+
+```
+
+Verificación de condiciones:
+
+1) Las muestras de ambos grupos son independientes, porque se toman en meses distintos
+2) La escala ordinal también se cumple, porque la concentración de ozono es una variable continua ordinal
+
+Ahora establecemos las hipótesis
+
+H0: La diferencia de calidad del aire respecto del ozono, en los primeros 9 días de agosto y septiembre, es igual
+HA: La diferencia de calidad del aire respecto del ozono, en los primeros 9 días de agosto y septiembre, es distinta
+
+```{r}
+alfa <- 0.05
+
+prueba <- wilcox.test(datosAgosto, datosSeptiembre, alternative = "two.sided", conf.level = 1 - alfa)
+print(prueba)
+
+```
+
+
+
+
+
+
+
+
