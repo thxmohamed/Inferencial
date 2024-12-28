@@ -1,0 +1,351 @@
+---
+title: "LECTURA 14"
+output: html_document
+date: "2024-12-28"
+---
+
+Regresión lineal múltiple
+
+
+Por lo general, para poder comparar cual modelo es mejor o no, se toma como variable el criterio de Akaike (AIC) o el criterio de información bayesiano (BIC). Donde si el valor de estos criterios es menor, se considera que el modelo es mejor. Tambien, al ver los valores Pr(>|t|) de los predictores, se puede ver si estos son significativos o no.
+
+Se emplea una prueba de ANOVA para ver si el modelo es significativo o no. Si el valor de p es menor a 0.05, se puede decir que el modelo es significativo. Y esto anterior, nos sirve para comprarar modelos.
+
+```{r}
+library(dplyr)
+
+datos <- mtcars |> filter(wt > 2 & wt < 5)
+
+modelo_0 <- lm(hp ~ 1, data = datos)
+
+modelo_1 <- lm(hp ~ disp, data = datos)
+
+modelo_2 <- lm(hp ~ disp + wt, data = datos)
+
+cat("Modelo 0: AIC =", AIC(modelo_0), "\n")
+cat("Modelo 1: AIC =", AIC(modelo_1), "\n")
+cat("Modelo 2: AIC =", AIC(modelo_2), "\n")
+cat("\n")
+cat("Modelo 0: BIC =", BIC(modelo_0), "\n")
+cat("Modelo 1: BIC =", BIC(modelo_1), "\n")
+cat("Modelo 2: BIC =", BIC(modelo_2), "\n")
+
+comparacion <- anova(modelo_0, modelo_1, modelo_2)
+
+cat("\n")
+cat("Prueba de bondad de ajuste:\n")
+print(comparacion)
+```
+Se puede observar que se pasa de un RSS de 107174 a 47859 y que el valor de Pr(>F) es menor que alfa = 0.05 en el modelo 1. En el modelo 2, no se ve una rebaja del RSS tan significativa y el valor de Pr(>F) es muy alto. Por lo tanto, el modelo 1 es el mejor de los tres.
+
+Acá, se nos plantea un problema ¿Cómo elegir los predictores para un modelo de manera eficiente? Para esto, se puede emplear distintos métodos.
+
+Regresión jerarquica: Se agrean los predictores que uno cree que son los más importantes y se van agregando los demás de acuerdo a su importancia.
+Se emplea la función update(modelo, . ~ . + predictor) para agregar un predictor al modelo. Se realizan comparaciones entre el modelo original y el nuevo modelo para ver si el predictor es significativo o no mediante el método de ANOVA.
+
+```{r}
+library(dplyr)
+
+datos <- mtcars |> filter(wt > 2 & wt < 5) |>
+    mutate_at(c("cyl", "vs", "am", "gear", "carb"), as.factor)
+
+
+modelo_1 <- lm(hp ~ disp, data = datos)
+
+
+modelo_2 <- update(modelo_1, . ~ . + cyl)
+cat("\n")
+print(anova(modelo_1, modelo_2), signif.legend = FALSE)
+
+modelo_3 <- update(modelo_2, . ~ . - cyl + carb)
+cat("\n")
+print(anova(modelo_1, modelo_3), signif.legend = FALSE)
+
+
+modelo_4 <- update(modelo_3, . ~ . + cyl)
+cat("\n")
+print(anova(modelo_3, modelo_4), signif.legend = FALSE)
+
+
+modelo_5 <- update(modelo_4, . ~ . + wt)
+cat("\n")
+print(anova(modelo_4, modelo_5), signif.legend = FALSE)
+
+modelo_6 <- update(modelo_5, . ~ . - wt + vs)
+cat("\n")
+print(anova(modelo_4, modelo_6), signif.legend = FALSE)
+
+cat("\n\n")
+cat("Modelo obtenido con regresión jerárquica:\n")
+cat("----------------------------------------\n")
+print(summary(modelo_4), signif.legend = FALSE)
+```
+
+
+Regresión paso a paso
+
+Selección hacia adelante:
+
+A partir de un modelo nulo, se van agregando los predictores uno a uno, de acuerdo a su importancia. Se van seleccionando mediante criterios como AIC o por el coeficiente de determinación ajustado. Si aumenta la capacidad de predicción, se agrega el predictor al modelo y se sigue con el siguiente.
+
+Eliminación hacia atrás:
+
+Acá, se parte de un modelo completo y se van eliminando predictores los cuales no aporten o que su aporte sea insignificante para el modelo.
+
+Regesión escalonada:
+
+Es una mezcla de los 2 anteriores, donde se van agregando y eliminando predictores de acuerdo a su importancia.
+
+
+Se emplea la función add1 para añadir y drop1 para eliminar predictores. Donde toma como parametros el modelo, el predictor a añadir o eliminar y el criterio de selección (Puede ser por F o por Chisq).
+
+```{r}
+library(dplyr)
+
+datos <- mtcars |> filter(wt > 2 & wt < 5) |>
+    mutate_at(c("cyl", "vs", "am", "gear", "carb"), as.factor)
+
+nulo <- lm(hp ~ 1, data = datos)
+completo <- lm(hp ~ ., data = datos)
+
+
+paso <- add1(nulo, scope = completo, test = "F")
+print(paso, digits = 3, signif.legend = FALSE)
+
+
+modelo <- update(nulo, . ~ . + cyl)
+
+
+paso <- add1(modelo, scope = completo, test = "F")
+cat("\n")
+print(paso, digits = 3, signif.legend = FALSE)
+
+modelo <- update(modelo, . ~ . + carb)
+
+cat("\nModelo obtenido:\n")
+print(modelo[["coefficients"]])
+
+
+paso <- drop1(completo, test = "F")
+print(paso, digits = 3, signif.legend = FALSE)
+
+modelo <- update(completo, . ~ . - wt)
+
+paso <- drop1(modelo, test = "F")
+cat("\n")
+print(paso, digits = 3, signif.legend = FALSE)
+
+modelo <- update(modelo, . ~ . - drat)
+
+cat("\nModelo obtenido:\n")
+print(modelo[["coefficients"]])
+```
+
+Si nos damos cuenta, los add1 y drop1 nos entrega el listado de los predictores y se selecciona el que posea un AIC menor.
+
+Existe la función llamada step, que hace de forma iterativa la selección de los predictores. Se le puede entregar un modelo inicial y un modelo final, y el método de selección (forward, backward o ambos). Lo hace mediante la discriminación en base al valor de AIC.
+
+```{r}
+library(dplyr)
+
+datos <- mtcars |> filter(wt > 2 & wt < 5) |>
+    mutate_at(c("cyl", "vs", "am", "gear", "carb"), as.factor)
+
+nulo <- lm(hp ~ 1, data = datos)
+completo <- lm(hp ~ ., data = datos)
+
+
+opt <- options(digits = 2,width = 54)
+#Uso de BIC y con forward y backward
+modelo <- step(nulo, scope = list(lower = nulo, upper = completo),
+               direction = "both",k=log(nrow(datos)) , test = "F", trace=1)
+
+
+print(modelo[["coefficients"]])
+#Uso de AIC y con forward y backward
+modelo <- step(nulo, scope = list(lower = nulo, upper = completo),
+               direction = "both" , test = "F", trace=1)
+
+print(modelo[["coefficients"]])
+```
+
+Se ingresa como entrada un k, que hace que en vez de emplear AIC lo haga en base a BIC. 
+
+Busqueda exhaustiva
+
+Se puede decir que los métodos anteriores, uno emplea una busqueda golosa. Para poder encontrar el mejor modelo, se puede emplear una busqueda exhaustiva y lo hace mediante fuerza bruta. Se emplea la función regsubsets para realizar la busqueda exhaustiva y se le entrega la formula, los datos, la cantidad de modelos a evaluar, cantidad de predictores y el metodo = "exhaustive".
+
+```{r}
+library(dplyr)
+library(leaps)
+
+datos <- mtcars |> filter(wt > 2 & wt < 5) |>
+    mutate_at(c("cyl", "vs", "am", "gear", "carb"), as.factor)
+
+combinaciones <- regsubsets(hp ~ ., data = datos,
+                          nbest = 1, nvmax = 16,
+                          method = "exhaustive")
+
+plot(combinaciones)
+
+comb_summary <- summary(combinaciones)
+#Se usan dos criterios para seleccionar el mejor modelo, el BIC y el coeficiente de determinación ajustado.
+i_min_bic <- which.min(comb_summary[["bic"]])
+i_max_r2a <- which.max(comb_summary[["adjr2"]])
+
+mejor_comb_bic <- comb_summary[["which"]][i_min_bic, ]
+mejor_comb_r2a <- comb_summary[["which"]][i_max_r2a, ]
+
+comb_mejor_bic <- names(mejor_comb_bic[mejor_comb_bic == TRUE])
+comb_mejor_r2a <- names(mejor_comb_r2a[mejor_comb_r2a == TRUE])
+
+nombres_mejor_bic <- unique(gsub("^(-.*)\\d$", "\\1", comb_mejor_bic))
+nombres_mejor_r2a <- unique(gsub("^(-.*)\\d$", "\\1", comb_mejor_r2a))
+
+pred_mejor_bic <- paste(nombres_mejor_bic[-1], collapse = " + ")
+pred_mejor_r2a <- paste(nombres_mejor_r2a[-1], collapse = " + ")
+
+fmla_mejor_bic <- as.formula(paste("hp", pred_mejor_bic, sep = " ~ "))
+fmla_mejor_r2a <- as.formula(paste("hp", pred_mejor_r2a, sep = " ~ "))
+
+#Se crean los modelos a partir de las formulas obtenidas
+```
+Si nos damos cuenta, al hacer un plot de las combinaciones, los mejores predictores se encuentran en la parte superior y marcados con negro.
+
+Confiabilidad de un modelo
+
+Hay ciertas condiciones que uno tiene que comprobar para que un modelo se le pueda dar el adjetivo de confiable:
+
+1.La variable de respuesta debe ser cuantitativa y continua, sin restricciones para su variabilidad.
+
+2.Los predictores deben ser cuantitativos o dicotómicos.
+
+3.Los predictores deben tener algún grado de variabilidad, es decir, no ser constantes.
+
+Para esto, se emplea la función apply, donde se comprueba que no existan variablidades iguales a cero.
+
+4.Cada predictor debe estar relacionado linealmente con la respuesta.
+
+Se verifica la relación lineal entre los predictores y la variable de respuesta mediante gráficos de residuos, es decir, mediante la funcion residualPlots. Tienen que ser valores menores al alfa.
+
+5.La distribución de los residuos debe ser cercana a la normal centrada en el cero.
+
+Se evalúa la normalidad de los residuos mediante la prueba de Shapiro-Wilk.
+
+6.La variabilidad de los residuos debe ser aproximadamente constante.
+
+Se evalúa la homocedasticidad mediante la funcion ncvTest.
+
+7.Los residuos deben ser independientes entre sí.
+
+Se evalúa la independencia de los residuos mediante la función durbinWatsonTest.
+
+8.No debe existir multicolinealidad. Esto significa que no deben darse relaciones lineales fuertes entre dos o más predictores.
+
+Se usa las funciones vif, donde si el valor es igual a 1 no existe multicolinealidad. Si se encuentra entre 1 y 5, es moderada y no afecta al modelo. Si es mayor a 5, es alta y afecta al modelo.
+
+9.Las estimaciones de los coeficientes del modelo no debe estar alterados por unas pocas observaciones influyentes.
+
+Se emplea la función influencePlot para ver si existen observaciones influyentes.Hay que ver que los valores de Cook's D sean menores a 1 y que se apalancamiento sea menor a este mismo valor.
+
+Calidad predictiva del modelo
+
+Se utiliza una validación cruzada para evaluar la calidad predictiva del modelo. Se emplea la función trainControl para definir el método de validación cruzada y se emplea la función train para ajustar el modelo y evaluarlo.
+
+Ejemplo con todo lo anterior
+
+Este es un ejemplo de una regresión lineal múltiple y como se comprueba la confiabilidad del modelo. Primero se busca la mejor combinación de los predictores a partir de una busqueda exhaustiva, luego se comprueban las condiciones para la confiabilidad del modelo y finalmente se realiza una validación cruzada.
+
+```{r}
+library(carData)
+library(leaps)
+library(dummy)
+library(car)
+library(caret)
+library(dplyr)
+
+set.seed(200)
+datos <- Prestige
+datos <- datos %>% sample_n(100)
+#A continuación, se seleccionan los predictores en base a su valor BIC, donde se busca el menor de estos y se emplea el método de búsqueda exhaustiva para lograr obtener los mejores predictores para nuestro modelo.
+
+combinaciones_predictores <- regsubsets(education ~ .,data=datos,nvmax = 3,method="exhaustive")
+summary<- summary(combinaciones_predictores)
+i_min_bic <- which.min(summary[["bic"]])
+mejor_comb <- summary[["which"]][i_min_bic, ]
+nombres_mejor_comb <- names(mejor_comb[mejor_comb == TRUE])
+
+nombres_comb <- unique(gsub("^(.*)\\d+$", "\\1", nombres_mejor_comb))
+
+predictor <- paste(nombres_comb[-1], collapse = "+")
+
+formula <- as.formula(paste("education", predictor,sep = " ~ "))
+
+print(formula)
+
+modelo <- lm(formula, data = datos)
+#Ahora, tenemos que comprobar que se cumplan las condiciones para la confiabilidad del modelo
+
+#1.La variable de respuesta debe ser cuantitativa y continua, sin restricciones para su variabilidad.
+
+#Debido a que los datos de la variable de respuesta son continuos y son valores numericos, se cumple la condicion.
+#2 Los predictores deben ser cuantitativos o dicotómicos.
+#Dado que estamos usando prestige + census como predictores y estos son datos cuantitativos, podemos tachar esta condición como cumplida.
+#3 Los predictores deben tener algún grado de variabilidad, es decir, no ser constantes.
+#Se puede emplear lo siguiente para comprobar este punto
+
+apply(datos[,c("prestige","census")], 2, var)
+
+#No existen varianzas iguales a cero, por lo que se cumple la condición.
+
+#4.Cada predictor debe estar relacionado linealmente con la respuesta.
+
+#Para comprobar la lineanidad de estos predictores con la variable de respuesta, se emplea lo siguiente:
+
+residual_plots <- residualPlots(lm(education ~ prestige + census, data = datos))
+
+#Al ver lo entregado por esta función de R, nos damos cuenta que cada predictor que ha sido seleccionado no tiene un valor menor a 0.05(que es el nivel de significancia), lo que nos indica que existe una relación lineal entre los predictores y la variable de respuesta. Tambien, no hay curvaturas en los gráficos, lo que nos indica que no hay problemas de linealidad.
+
+#5. La distribución de los residuos debe ser cercana a la normal centrada en el cero.
+
+#Se puede realizar este análisis en base al grafico que nos entrega el apartado anterior. En base a esto, a simple vista de puede deducir que existen datos que se escapan un poco de esta línea y no seguirían la normalidad. Para saber si realmente no cumplen esto, se emplea una prueba de Shapiro y nos da lo siguiente:
+
+
+print(shapiro.test(residuals(modelo)))
+
+#Dado al p-value obtenido, no se puede rechazar la hipótesis nula que uno plantea en estos casos, es decir, no se puede rechazar de no provienen de una distribución normal los datos y dando a entender de que estos pueden estar distribuidos normalmente.
+
+
+#6.La variabilidad de los residuos debe ser aproximadamente constante.
+print(ncvTest(modelo))
+
+#Como el valor entregado es mayor al nivel de significancia que uno tiende a plantear (0.05), se cumple la condición de que la variabilidad de los residuos es aproximadamente constante.
+
+
+#7.Los residuos deben ser independientes entre sí
+
+print(durbinWatsonTest(modelo))
+#Dado que el valor de p obtenido en dicho test es mayor que el del nivel de significancia que uno plantea (0.05), no existe evidencia para poder descartar el cumplimento de la condición, es decir, se cumple dicha condición.
+
+
+#8.No debe existir multicolinealidad. Esto significa que no deben darse relaciones lineales fuertes entre dos o más predictores.
+print(vif(modelo))
+#Como estos valores están entre 1 y 5, existe una multicolinealidad moderada y que no es de mayor preocupación. Por lo tanto, se cumple la condición.
+
+#9.Las estimaciones de los coeficientes del modelo no debe estar alterados por unas pocas observaciones influyentes.
+print(influencePlot(modelo))
+#Como ningún valor de Hat observado se acerca al 1 y las distancias de Cook son pequeñas y menores al umbral que se define, es decir, no sobrepasan el valor de 1, el modelo que se ha creado cumple con la condición.
+
+#Luego de comprobar las condiciones, se procede a realizar la validación de la forma solicitada, es decir, se procede a realizar la validación cruzada.
+
+control <- trainControl(method = "LOOCV")
+
+modelo_loocv <- train(formula, data = datos, method = "lm", trControl = control)
+
+print(modelo_loocv)
+
+```
+
+Primero, el valor obtenido de RMSE, es bajo e indica existe una pequeña diferencia entre los valores del modelo y los observados, dando a entender una buena capacidad predictora. Ahora, el valor de R2 obtenido, nos dice que el modelo que fue creado explica de gran manera la varianza de los datos. Si hablamos del MAE, que hace referencia al error absoluto medio, es de 0.86 y da a entender que están a esa distancia de los valores reales.
+
+Para finalizar, se puede notificar de que el modelo que se ha creado posee muy buenos resultados y cumple con las condiciones de confiablidad. Por lo que, se podría realizar otro análisis en base a emplear otro tipo de búsqueda de predictores y encontrar un modelo mejor (si es que existe).
