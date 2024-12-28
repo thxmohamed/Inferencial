@@ -1,0 +1,402 @@
+---
+title: "Lectura 12"
+output: html_document
+date: "2024-12-26"
+---
+
+Remuestreo 
+
+Son un alternativa al inferir sobre distintos parametros distintos a la media o cuando no se cumplen las condiciones que emplean los demás métodos.
+
+Bootstrap
+
+Se emplea que cuando se tienen datos representativos, pero con un tamaño de muestra pequeño. Para esto, se realizan los siguientes pasos
+
+1. Se crea, una cantidad que uno arbritariamente elige, de nuevas muestras y del mismo tamaño del original.
+
+2. Se calcula el estadístico de interés para cada una de las muestras o distribución de bootstrap.
+
+3.Usar esta distribución para calcular el error estándar, intervalos de confianza y pruebas de hipótesis.
+
+
+Para una muestra:
+
+
+```{r}
+library(boot)
+library(bootES)
+muestra <- c(79,75,84,75,94,82,76,90,79,88)
+datos <- data.frame(muestra)
+B <- 2000 #Valor que uno escoge 
+alfa <- 0.01
+media <- function(valores,i){
+  mean(valores[i])
+}
+
+set.seed(432)
+
+#Se construye la distribución de bootstrap
+distribucion <- boot(muestra,statistic = media ,R=B)
+
+print(distribucion)
+plot(distribucion)
+
+#Ahora, para construir los intervalos de confianza, se emplea la siguiente función
+
+intervalos <- boot.ci(distribucion,conf=1-alfa,type= c("norm","perc","bca"))
+print(intervalos)
+
+#Existe otra función la cual nos permite emplear bootstrap y calcula solo un tipo de intervalo de confianza
+
+cat("Distribución usando bootES\n")
+distribucion_2 <- bootES(muestra, R=B, ci.type = "bca", ci.conf = 1-alfa,plot=TRUE )
+
+print(distribucion_2)
+```
+
+
+Los valores de "norm", "perc" y "bca" son los tipos de intervalos de confianza que se pueden emplear. Donde "norm" es el intervalo de confianza normal, "perc" es el intervalo de confianza percentil y "bca" es el intervalo de confianza ajustado por el método de corrección de aceleración y sesgo.
+
+Ahora, si queremos realizar inferencias sobre la media de una población, se emplea la siguiente función:
+
+
+```{r}
+library(boot)
+library(bootES)
+muestra <- c(79,75,84,75,94,82,76,90,79,88)
+datos <- data.frame(muestra)
+media_obs <- mean(muestra)
+B <- 2000 
+
+media <- function(valores,i){
+  mean(valores[i])
+}
+set.seed(432)
+
+#Se construye la distribución de bootstrap
+distribucion <- boot(muestra,statistic = media ,R=B)
+
+
+#Se nos pide ver si la media es igual a 75 (hipotesis nula)
+
+valor_nulo <- 75
+#Hay que realizar un desplazamiento de los valores
+
+desplazamiento <- mean(distribucion[["t"]])-valor_nulo
+distribucion_nula <- distribucion[["t"]]-desplazamiento
+#Se calcula el p-valor
+
+p_valor <- (sum(distribucion_nula>media_obs)+1)/(B+1)
+print(p_valor)
+
+#Como el valor es de 0.0009 y es menor a 0.01, se rechaza la hipótesis nula
+
+```
+
+
+Ahora, para 2 muestras independientes empleamos lo siguiente:
+
+El proceso es muy similar al anterior, acá se usa two.boot, donde se les entrega las 2 muestras originales, el estadístico de interés y la cantidad de remuestreos.
+
+Pongamonos en el siguiente escenario:
+
+Tenemos 2 muestras que representan las notas finales de hombres y mujeres.Hicieron pruebas de Shapiro-Wilk y se determinó que se puede asumir normalidad y se quiere usar bootstrapping con B = 9999 y con alfa = 0.05.
+
+Se plantea como hipotesis lo siguiente
+
+H0: La media de las notas de los hombres menos la media de las notas de las mujeres, es igual a -0.5.   
+
+H1: La media de las notas de los hombres menos la media de las notas de las mujeres es distinta de -0.5.
+
+```{r}
+library(boot)
+library(bootES)
+library(simpleboot)
+library(ggpubr)
+hombres <- c(1.3, 1.5, 1.6, 1.7, 1.7, 1.9, 2.3, 2.4, 2.6, 2.6, 2.7, 
+             2.8, 3.2, 3.7, 4.1, 4.4, 4.5, 4.8, 5.2, 5.2, 5.3, 5.5, 
+             5.5, 5.6, 5.6, 5.7, 5.7)
+
+mujeres <- c(3.5, 3.6, 3.8, 4.3, 4.5, 4.9, 5.1, 5.3, 5.3, 5.5, 5.8, 
+             6.0, 6.3, 6.3, 6.4, 6.4, 6.6, 6.7)
+
+n_hombres <- length(hombres)
+n_mujeres <- length(mujeres)
+
+print(shapiro.test(hombres))
+print(shapiro.test(mujeres))
+
+media_hombres <- mean(hombres)
+media_mujeres <- mean(mujeres)
+dif <- media_hombres - media_mujeres
+
+
+B <- 9999
+set.seed(432)
+
+distribucion <- two.boot(hombres, mujeres, FUN = mean, R=B)
+datos <- data.frame(diferencias = distribucion[["t"]])
+g_hist <- gghistogram(datos, x = "diferencias", bins = 100, xlab = "Diferencias de medias", ylab = "Frecuencia", main = "Histograma de diferencias de medias")
+
+g_qq <- ggqqplot(datos, x = "diferencias")
+g <- ggarrange(g_hist, g_qq)
+print(g)
+
+#Ahora, se calcula la media 
+
+media_d <- mean(datos[["diferencias"]])
+sd <- sd(datos[["diferencias"]])
+
+print(media_d)
+print(sd)
+
+#Los intervalos de confianza
+
+alfa <- 0.05
+intervalos <- boot.ci(distribucion,conf=1-alfa,type="bca")
+print(intervalos)
+
+#Se hace el desplazamiento y el calculo del p-valor
+
+valor_nulo <- -0.5
+desplazamiento <- media_d-valor_nulo
+distribucion_nula <- datos[["diferencias"]]-desplazamiento
+p<- (sum(distribucion_nula < dif)+1) / (B+1)
+print(p)
+```
+
+
+Bootstrapping para dos muestras apareadas
+
+Este método es útil cuando las muestras están relacionadas, como en mediciones repetidas. Se calculan las diferencias entre las dos condiciones y se aplica bootstrap sobre estas diferencias.
+
+Hagamos que se quieren probar las diferencias entre los resultados de dos pruebas y se quiere saber la diferencia entre las notas es igual a 0.5.
+
+```{r}
+prueba_1 <- c(3.5, 2.7, 1.0, 1.8, 1.6, 4.3, 5.8, 6.4, 3.9, 4.3, 3.4, 
+              5.3, 5.8, 5.3, 2.0, 1.3, 4.0, 5.3, 1.6, 3.6)
+
+prueba_2 <- c(5.2, 5.1, 5.9, 4.8, 1.4, 2.3, 6.8, 5.3, 3.1, 3.8, 4.6, 
+              1.2, 3.9, 2.0, 1.7, 3.3, 6.0, 4.8, 6.9, 1.3)
+
+dif <- prueba_2 - prueba_1
+
+valor_obs <- mean(dif)
+
+B <- 3999
+alfa <- 0.05
+
+distribucion_boot <- bootES(dif, R=B, ci.type = "bca", ci.conf = 1-alfa, plot = FALSE)
+valor_nulo <- 0.5
+desplazamiento <- mean(distribucion_boot[["t"]])-valor_nulo
+distribucion_nula <- distribucion_boot[["t"]]-desplazamiento
+p_valor <- (sum(abs(distribucion_nula)>abs(valor_obs))+1)/(B+1)
+print(valor_obs)
+print(distribucion_boot)
+print(p_valor)
+
+
+```
+
+Prueba de permutaciones para dos muestras independientes
+
+Este método no paramétrico evalúa diferencias entre dos grupos sin asumir normalidad.
+
+Veamoslo con un ejemplo:
+
+Se quiere analizar las notas finales de estudiantes del primer año de ing y del último año de otras carreras.Para ello, toma muestras de 20 estudiantes de Ingeniería y 12 estudiantes de otras carreras. Se quiere usar permutación con B = 5999 y 0.05 de alfa.
+
+Como hipotesis:
+
+H0 : La media de las notas de los estudiantes de ingeniería es igual a la media de las notas de los estudiantes de otras carreras.
+
+Ha : La media de las notas de los estudiantes de ingeniería es distinta de la media de las notas de los estudiantes de otras carreras.
+
+
+```{r}
+# iNGENIERIA
+a <- c(5.4, 4.7, 6.3, 2.9, 5.9, 5.1, 2.1, 6.2, 1.6, 6.7, 3.0, 3.3, 
+       5.0, 4.1, 3.3, 3.4, 1.2, 3.8, 5.8, 4.2)
+# OTRAS CARRERAS
+b <- c(4.0, 4.1, 4.3, 4.3, 4.3, 4.3, 4.2, 4.3, 4.3, 4.3, 4.4, 4.1, 
+       4.3, 4.3, 4.0)
+
+R <- 5999
+set.seed(432)
+
+obtiene_permutacion <- function(i, muestra_1, muestra_2){
+  n_1 <- length(muestra_1)
+  combinada <- c(muestra_1, muestra_2)
+  n<- length(combinada)
+  permutacion <- sample(combinada, n, replace = FALSE)
+  nueva_1 <- permutacion[1:n_1]
+  nueva_2 <- permutacion[(n_1+1):n]
+  return(list(nueva_1, nueva_2))
+}
+
+calcular_diferencia <- function(muestras, FUN){
+  muestra_1 <- muestras[[1]]
+  muestra_2 <- muestras[[2]]
+  diferencia <- FUN(muestra_1) - FUN(muestra_2)
+  return(diferencia)
+}
+
+calcular_p <- function(distribucion, valor_obs , repeticiones, alternative){
+  if(alternative == "two.sided"){
+    numerador <- sum(abs(distribucion)>abs(valor_obs))+1
+    denominador <- repeticiones+1
+    p_valor <- numerador/denominador
+  }else if(alternative == "greater"){
+    numerador <- sum(distribucion>valor_obs)+1
+    denominador <- repeticiones+1
+    p_valor <- numerador/denominador
+  }else{
+    numerador <- sum(distribucion<valor_obs)+1
+    denominador <- repeticiones+1
+    p_valor <- numerador/denominador
+  }
+  return(p_valor)
+}
+
+graficar_distribucion <- function(distribucion, ... ){
+  observaciones <- data.frame(distribucion)
+  histograma <- gghistogram(observaciones, x = "distribucion", bins=30, ...)
+  qq <- ggqqplot(observaciones, x = "distribucion",...)
+  figura<- ggarrange(histograma, qq,nrow=1, ncol=2)
+  print(figura)
+}
+
+contrastar_hipotesis <- function(muestra_1,muestra_2,repeticiones,FUN,alternative,plot,...){
+  observado <- calcular_diferencia(list(muestra_1,muestra_2), FUN)
+  cat("El valor observado es: ",observado,"\n")
+  n_1 <- length(muestra_1)
+  permutaciones <- lapply(1:repeticiones, obtiene_permutacion, muestra_1, muestra_2)
+  distribucion <- sapply(permutaciones, calcular_diferencia,FUN)
+  if(plot){
+    graficar_distribucion(distribucion,...)
+    
+  }
+  p_valor <- calcular_p(distribucion, observado, repeticiones, alternative)
+  cat("El p-valor es: ", p_valor, "\n")
+}
+
+contrastar_hipotesis(a,b,repeticiones = R, FUN = mean, alternative = "two.sided", plot = TRUE, xlab = "Diferencia de medias", ylab = "Frecuencia", main = "Distribución de diferencias de medias")
+```
+
+
+Permutaciones para más de dos muestras correlacionadas
+
+```{r}
+library(ez)
+library(ggpubr)
+library(tidyr)
+
+
+Algoritmos <- c("Quicksort", "Bubblesort", "Mergesort")
+Quicksort <- c(11.2, 22.6, 23.4, 23.3, 21.8, 40.1)
+Bubblesort <- c(15.7, 29.3, 30.7, 30.8, 29.8, 50.3)
+Mergesort <- c(12.0, 25.7, 25.7, 23.7, 25.5, 44.7)
+Instancia <- factor(1:6)
+datos_anchos <- data.frame(Instancia, Quicksort, Bubblesort, Mergesort)
+
+datos_largos <- datos_anchos |>
+  pivot_longer(all_of(Algoritmos),
+               names_to = "Algoritmo",
+               values_to = "Tiempo")
+datos_largos[["Algoritmo"]] <- factor(datos_largos[["Algoritmo"]],
+                                      levels = Algoritmos)
+
+g <- ggqqplot(datos_largos, "Tiempo", facet.by = "Algoritmo",
+              color = "Algoritmo")
+print(g)
+
+alfa <- 0.01
+
+
+anova <- ezANOVA(datos_largos, dv = Tiempo, within = Algoritmo,
+                 wid = Instancia)
+valor_observado <- anova[["ANOVA"]][["F"]]
+
+
+obtiene_permutacion <- function(i, df_ancho) {
+  df_ancho[, 2:4] <- t(apply(df_ancho[, 2:4], 1, sample))
+  return(df_ancho)
+}
+
+R <- 2999
+set.seed(432)
+permutaciones <- lapply(1:R, obtiene_permutacion, datos_anchos)
+
+#
+obtiene_F <- function(df_ancho) {
+  df_largo <- df_ancho |>
+    pivot_longer(c("Quicksort", "Bubblesort", "Mergesort"),
+                 names_to = "Algoritmo",
+                 values_to = "Tiempo")
+  df_largo[["Algoritmo"]] <- factor(df_largo[["Algoritmo"]],
+                                    levels = Algoritmos)
+  anova <- ezANOVA(df_largo, dv = Tiempo, within = Algoritmo,
+                   wid = Instancia)
+  return(anova[["ANOVA"]][["F"]])
+}
+
+distribucion <- sapply(permutaciones, obtiene_F)
+
+p_valor <- (sum(distribucion > valor_observado) + 1) / (R + 1)
+print(p_valor)
+
+#Analisis post-hoc 
+
+obtiene_media_difs <- function(df_ancho,columna_1,columna_2){
+  media_1 <- mean(df_ancho[[columna_1]])
+  media_2 <- mean(df_ancho[[columna_2]])
+  media <- media_1 - media_2
+  return(media)
+}
+
+dif_obs_Q_B <- obtiene_media_difs(datos_anchos,"Quicksort","BubbleSort")
+dif_obs_Q_M <- obtiene_media_difs(datos_anchos,"Quicksort","Mergesort")
+dif_obs_B_M <- obtiene_media_difs(datos_anchos,"BubbleSort","Mergesort")
+
+# Obtiene las distribuciones de las medias de las diferencias permutadas
+dist_medias_difs_Q_B <- sapply(permutaciones, obtiene_media_difs,
+                              "Quicksort", "Bubblesort")
+dist_medias_difs_Q_M <- sapply(permutaciones, obtiene_media_difs,
+                              "Quicksort", "Mergesort")
+dist_medias_difs_B_M <- sapply(permutaciones, obtiene_media_difs,
+                              "Bubblesort", "Mergesort")
+
+# Obtener valores p
+num <- sum(abs(dist_medias_difs_Q_B) > abs(dif_obs_Q_B)) + 1
+den <- R + 1
+p_Q_B <- num / den
+
+num <- sum(abs(dist_medias_difs_Q_M) > abs(dif_obs_Q_M)) + 1
+den <- R + 1
+p_Q_M <- num / den
+
+num <- sum(abs(dist_medias_difs_B_M) > abs(dif_obs_B_M)) + 1
+den <- R + 1
+p_B_M <- num / den
+
+valores_p <- c(p_Q_B, p_Q_M, p_B_M)
+
+# Ajustar y mostrar valores p
+valores_p_adj <- p.adjust(valores_p, method = "BH")
+
+cat("\n\n")
+cat("Análisis post-hoc (permutaciones) para la diferencia de las medias\n")
+cat("------------------------------------------------------------\n")
+cat("Valores p ajustados:\n")
+cat(sprintf("Quicksort - Bubblesort: %.3f\n", valores_p_adj[1]))
+cat(sprintf(" Quicksort - Mergesort: %.3f\n", valores_p_adj[2]))
+cat(sprintf("Bubblesort - Mergesort: %.3f\n", valores_p_adj[3]))
+cat("\nDiferencias observadas:\n")
+cat(sprintf("Quicksort - Bubblesort: %6.3f\n", dif_obs_Q_B))
+cat(sprintf(" Quicksort - Mergesort: %6.3f\n", dif_obs_Q_M))
+cat(sprintf("Bubblesort - Mergesort: %6.3f\n", dif_obs_B_M))
+
+
+```
+
+
