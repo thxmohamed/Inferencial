@@ -251,6 +251,76 @@ cat("MSE para el conjunto de prueba: ", rmse_prueba)
 
 ```
 
+Validación cruzada en k pliegues: separar el conjunto de datos en k pliegues de igual tamaño, y, para cada una, hacer:
+
+1) Tomar uno y reservarlo como conjunto de prueba
+
+2) Ajustar la recta de mínimos cuadrados usando para ello los datos combinados de los k - 1 subconjuntos restantes
+
+3) Estimar el error cuadrático medio usando para ello el conjunto de prueba
+
+4) Estimar el error cuadrático medio del modelo, correspondiente a la media de los k MSE obtenidos en los pasos anteriores.
+
+```{r}
+library(caret)
+library(dplyr)
+
+datos <- mtcars |> filter(wt > 2 & wt < 5)
+
+n <- nrow(datos)
+
+# Obtener datos de prueba y entrenamiento de 5 pliegues
+
+set.seed(111)
+
+entrenamiento <- train(hp ~ disp, data = datos, method = "lm",
+                       trControl = trainControl(method = "cv", number = 5))
+
+modelo <- entrenamiento[["finalModel"]]
+print(summary(modelo))
+
+# Mostrar resultados de cada pliegue
+
+cat("Errores en cada pliegue:\n")
+print(entrenamiento[["resample"]])
+
+# Mostrar el resultado estimado para el modelo
+
+cat("\nError estimado para el modelo:\n")
+print(entrenamiento[["results"]])
+```
+
+Pero, si la muestra es pequeña, una mejor alternativa es usar validación cruzada dejando uno fuera LOOCV
+
+```{r}
+library(caret)
+library(dplyr)
+
+datos <- mtcars |> filter(wt > 2 & wt < 5)
+
+n <- nrow(datos)
+
+# Obtener datos de prueba y entrenamiento de 5 pliegues
+
+set.seed(111)
+
+entrenamiento <- train(hp ~ disp, data = datos, method = "lm",
+                       trControl = trainControl(method = "LOOCV"))
+
+modelo <- entrenamiento[["finalModel"]]
+print(summary(modelo))
+
+# Mostrar errores de cada pliegue
+
+cat("Predicciones en cada pliegue:\n")
+print(entrenamiento[["pred"]])
+
+# Mostrar el resultado estimado para el modelo
+
+cat("\nError estimado para el modelo:\n")
+print(entrenamiento[["results"]])
+```
+
 
 
 
