@@ -1,0 +1,304 @@
+---
+title: "Lectura11"
+author: "Benjamín Bustamante y Mohamed Al-Marzuk"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+MÉTODOS ROBUSTOS
+
+Alternativas robustas a la media
+
+Media truncada: se calcula descartando un determinado porcentaje de los valores en ambos extremos del conjunto de datos.
+
+```{r}
+
+x = c(5, 20, 37, 38, 40, 43, 43, 45, 87, 91)
+
+mediaNormal = mean(x)
+
+mediaTruncada = mean(x, trim = 0.2)
+
+cat("La media normal es: ", mediaNormal, "\n")
+cat("La media truncada es: ", mediaTruncada, "\n")
+
+```
+
+Quitamos el 20% de los datos extremos.
+
+
+Prueba de Yuen para dos muestras independientes.
+
+Buena alternativa a la prueba t de Student para muestras independientes cuando las varianzas de ambas muestras son muy diferentes o los tamaños de las muestras son muy dispares. Utiliza las medias truncadas, pero no se recomienda usar esta prueba si las muestras se truncan cerca del nivel de sus medianas (trim = 0.5)
+
+
+```{r}
+library(WRS2)
+library(ggpubr)
+
+# Construir data frame.
+a <- c(25.1, 25.2, 25.3, 25.3, 25.4, 25.4, 25.5, 25.5, 25.6, 25.8, 25.8, 
+       25.9, 25.9, 26.0, 26.0, 26.2, 26.2, 26.3, 26.4, 26.5, 26.5, 26.6, 
+       26.6, 26.7, 26.7, 26.9, 26.9, 27.0, 27.1, 27.3, 27.8, 27.8, 28.4, 
+       28.5, 29.0, 29.8, 30.4, 31.8, 31.9, 33.3, 33.7)
+
+b <- c(24.1, 24.4, 24.4, 24.4, 24.5, 24.7, 24.8, 24.8, 25.1, 25.2, 25.2, 
+       25.3, 25.3, 26.2, 26.3, 26.3, 26.4, 26.4, 26.5, 27.2, 27.7, 28.3, 
+       28.4, 28.4, 28.6, 28.7, 29.6, 29.6, 29.9, 30.1, 30.5)
+
+# Crear data frame.
+tiempo <- c(a, b)
+algoritmo <- c(rep("A", length(a)), rep("B", length(b)))
+datos <- data.frame(tiempo, algoritmo)
+
+# Comprobar normalidad.
+g <- ggqqplot(datos, x = "tiempo", facet.by = "algoritmo",
+            palette = c("blue", "red"), color = "algoritmo")
+print(g)
+
+# Establecer nivel de significación.
+alfa <- 0.05
+
+# Ver poda del 20%.
+gamma <- 0.2
+n_a <- length(a)
+n_b <- length(b)
+
+poda_a <- n_a * gamma
+poda_b <- n_b * gamma
+
+a_truncada <- a[poda_a:(n_a - poda_a)]
+b_truncada <- b[poda_b:(n_b - poda_b)]
+
+tiempo <- c(a_truncada, b_truncada)
+algoritmo <- c(rep("A", length(a_truncada)), rep("B", length(b_truncada)))
+datos_truncados <- data.frame(tiempo, algoritmo)
+
+g <- ggqqplot(datos_truncados, x = "tiempo", facet.by = "algoritmo",
+              palette = c("blue", "red"), color = "algoritmo")
+
+print(g)
+
+# Aplicar prueba de Yuen
+
+prueba <- yuen(tiempo ~ algoritmo, data = datos, tr = gamma)
+print(prueba)
+
+```
+
+
+Resultado de la prueba de Yuen con bootstrapping para el ejemplo, usando como estimadores la media y la mediana
+
+```{r}
+
+b <- c(24.1, 24.4, 24.4, 24.5, 24.7, 24.8, 25.1, 25.2, 25.2, 25.3,
+       25.3, 25.4, 25.7, 25.7, 26.3, 26.3, 26.4, 26.5, 27.2, 27.7, 28.3,
+       28.4, 28.4, 28.6, 28.7, 29.6, 29.9, 30.1, 30.5)
+
+tiempo <- c(a, b)
+algoritmo <- c(rep("A", length(a)), rep("B", length(b)))
+datos <- data.frame(tiempo, algoritmo)
+
+# Establecer nivel de significación y cantidad de muestras a generar
+# con bootstrapping.
+alfa <- 0.05
+bootstrap <- 999
+
+# Aplicar prueba con la media
+set.seed(135)
+
+prueba_media <- pb2gen(tiempo ~ algoritmo,
+                       data = datos,
+                       est = "mean",
+                       nboot = bootstrap)
+
+cat("\n\nResultado al usar la media como estimador\n\n")
+print(prueba_media)
+
+# Aplicar prueba con la mediana
+set.seed(135)
+
+prueba_mediana <- pb2gen(tiempo ~ algoritmo,
+                         data = datos,
+                         est = "median",
+                         nboot = bootstrap)
+
+cat("Resultado al usar la mediana como estimador\n\n")
+print(prueba_mediana)
+
+
+```
+
+Prueba de Yuen para dos muestras pareadas
+
+```{r}
+
+# Construir data frame.
+x <- c(32.0, 32.0, 32.0, 32.0, 32.1, 32.1, 32.1, 32.2, 32.3, 32.3, 32.5,
+       32.7, 32.7, 32.7, 33.1, 33.4, 33.9, 34.1, 34.2, 34.5, 36.0, 36.6,
+       36.7, 37.2, 38.0)
+
+y <- c(33.0, 33.0, 33.0, 33.0, 33.0, 33.3, 33.3, 33.3, 33.3, 33.3, 33.5,
+       33.6, 33.7, 33.9, 33.9, 34.2, 34.2, 34.3, 34.3, 34.4, 34.5, 34.6,
+       36.4, 38.9, 40.2)
+
+# Fijar nivel de significación.
+alfa <- 0.05
+
+# Aplicar prueba de Yuen para muestras pareadas.
+gamma <- 0.2
+prueba <- yuend(x = x, y = y, tr = gamma)
+print(prueba)
+
+```
+
+Comparaciones de una vía para múltiples grupos independientes
+
+Son alternativas a ANOVA que podemos usar cuando los tamaños muestrales son muy diferentes o no se cumple la condición de homocedasticidad. Para eso, tenemos las siguientes funciones:
+
+t1way(formula, data, tr, alpha): Esta efectúa un proceso similar a ANOVA usando medias truncadas. lincon(formula, data, tr, alpha) permite realizar el procedimiento post-hoc.
+
+
+t1waybt(formula, data, tr, nboot) es parecido al anterior pero incluye bootstrapping. Se hace el post-hoc con mcppb20(formula, data, tr, nboot)
+
+med1way(formula, data, iter) emplea la mediana y sigue un proceso iterativo. No hay funciones en el paquete WRS2 que sirvan pal post-hoc.
+
+
+```{r}
+
+# Contruir data frame
+
+a <- c(25.1, 25.2, 25.3, 25.3, 25.4, 25.4, 25.5, 25.5, 25.6, 25.8, 
+       25.8, 25.9, 25.9, 26.0, 26.0, 26.2, 26.2, 26.2, 26.3, 26.4, 
+       26.5, 26.5, 26.5, 26.6, 26.7, 26.7, 26.9, 27.0, 27.1, 27.3, 
+       27.8, 28.4, 28.5, 29.0, 29.8, 30.2, 31.8, 31.9, 33.3, 33.7)
+
+b <- c(24.1, 24.4, 24.4, 24.5, 24.7, 24.8, 24.8, 25.1, 25.2, 25.2, 
+       25.3, 25.4, 25.7, 25.7, 26.3, 26.3, 26.4, 26.5, 27.2, 27.7, 
+       28.3, 28.4, 28.4, 28.6, 28.7, 29.6, 29.9, 30.1, 30.5)
+
+c <- c(24.5, 24.5, 24.5, 24.5, 24.6, 24.6, 24.6, 24.6, 24.6, 24.7, 
+       24.7, 24.7, 24.7, 24.8, 25.0, 25.0, 25.0, 25.2, 25.2, 25.2, 
+       25.5, 25.7, 25.9, 26.2, 26.5, 26.5, 26.7, 27.0, 29.2, 29.9, 
+       30.1)
+
+tiempo <- c(a, b, c)
+algoritmo <- c(rep("A", length(a)), rep("B", length(b)), rep("C", length(c)))
+datos <- data.frame(tiempo, algoritmo)
+
+# Fijar nivel de significación.
+alfa <- 0.05
+
+# Comparar los diferentes algoritmos usando medias truncadas.
+cat("Comparación entre grupos usando medias truncadas\n\n")
+gamma <- 0.2
+
+set.seed(666)
+
+medias_truncadas <- t1way(tiempo ~ algoritmo, data = datos, tr = gamma, 
+                          alpha = alfa)
+print(medias_truncadas)
+
+if(medias_truncadas$p.value < alfa){
+  cat("\nProcedimiento post-hoc\n\n")
+  set.seed(666)
+  
+  post_hoc <- lincon(tiempo ~ algoritmo, data = datos, tr = gamma,
+                     alpha = alfa)
+  
+  print(post_hoc)
+}
+
+# Comparar los diferentes algoritmos usando boostrap.
+
+cat("Comparación entre grupos usando bootstrap\n\n")
+muestras <- 999
+
+set.seed(666)
+
+bootstrap <- t1waybt(tiempo ~ algoritmo, data = datos, tr = gamma,
+                     nboot = muestras)
+
+print(medias_truncadas)
+
+if(medias_truncadas$p.value < alfa){
+  cat("\nProcedimiento post-hoc\n\n")
+  set.seed(666)
+  
+  post_hoc <- mcppb20(tiempo ~ algoritmo, data = datos, tr = gamma,
+                     nboot = muestras)
+  
+  print(post_hoc)
+}
+
+```
+
+Comparaciones de una vía para grupos correlacionados
+
+Las podemos usar cuando los datos no cumplen con la esfericidad.
+
+rmanova(y, groups, blocks, tr) efectúa un procedimiento similar a ANOVA usando medias truncadas
+
+rmmcp(y, groups, blocks, tr, nboot) realiza la misma tarea pero con bootstrapping. EL post-hoc se realiza con pairdepb(y, groups, blocks, tr, nboot)
+
+```{r}
+
+library(tidyverse)
+
+# Construir data frame.
+X <- c(32.0, 32.0, 32.0, 32.1, 32.1, 32.1, 32.2, 32.3, 32.3, 32.5, 
+       32.7, 32.7, 32.7, 33.1, 33.4, 33.9, 34.1, 34.2, 34.2, 34.5, 36.0, 
+       36.6, 36.7, 37.2, 38.0)
+
+
+Y <- c(33.0, 33.0, 33.0, 33.0, 33.2, 33.3, 33.3, 33.3, 33.3, 33.5, 33.6, 
+       33.7, 33.9, 33.9, 34.2, 34.2, 34.3, 34.3, 34.4, 34.5, 34.6, 
+       36.4, 38.9, 40.2, 40.2)
+
+Z <- c(32.0, 32.2, 32.5, 32.6, 32.7, 32.7, 32.7, 33.0, 33.2, 33.3, 
+       33.6, 33.6, 33.9, 34.1, 34.2, 34.4, 34.4, 34.5, 34.6, 34.7, 
+       36.3, 36.6, 36.7, 38.9, 39.2)
+
+instancia <- 1:length(X)
+
+datos <- data.frame(instancia, X, Y, Z)
+
+# Lllevar data frame a formato largo
+
+datos <- datos %>% pivot_longer(c("X", "Y", "Z"), names_to = "algoritmo",
+                                values_to = "tiempo")
+
+datos[["algoritmo"]] <- factor(datos[["algoritmo"]])
+
+# Fijar nivel de significancia
+
+alfa <- 0.5
+
+# Aplicar alternativa robusta para ANOVA de una vía con
+# Muestras correlacionadas
+
+gamma <- 0.2
+
+prueba <- rmanova(y = datos[["tiempo"]], groups = datos[["algoritmo"]],
+                  blocks = datos[["instancia"]], tr = gamma)
+
+print(prueba)
+
+if(prueba$p.value < alfa){
+  cat("\nProcedimiento post-hoc\n\n")
+  
+  post_hoc <- rmmcp(y = datos[["tiempo"]], groups = datos[["algoritmo"]],
+                    blocks = datos[["instancia"]], tr = gamma, alpha = alfa)
+  
+  print(post_hoc)
+}
+
+```
+
+
+
+
+
+
+
+
