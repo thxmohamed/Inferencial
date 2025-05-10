@@ -1,0 +1,160 @@
+---
+title: "PEP 1"
+author: "Dupla 13"
+date: "2024-11-11"
+output: html_document
+---
+#Datos
+
+```{r}
+datos <- read.csv2("Dataset PE1.csv")
+```
+
+# Pregunta 1
+
+El químico farmacéutico a cargo de las pruebas cree que existen diferencias en los niveles de H2O2 entre los hombres de 40 y 49 años que utilizaron ChaoCaspa para cada mes registrado. Para confirmar esta creencia, se les solicita realizar un análisis inferencial, con un 95% de confianza, explicando y justificando paso a paso el procedimiento seguido (Hipótesis contrastadas, prueba(s) estadística(s), verificación de condiciones, etc.), y entregar una respuesta concreta al químico farmacéutico.
+
+```{r}
+
+library(dplyr)
+
+datos <- read.csv2("Dataset PE1.csv")
+
+datosFiltradosP1 <- datos %>% filter(EDAD == "40-49") %>% filter(SEXO == "M") %>% filter(SHAMPOO == "ChaoCaspa") %>% select(ID, NIVEL_3, NIVEL_6, NIVEL_9, NIVEL_12)
+
+```
+
+Para responder a esta pregunta, procederemos a utilizar la prueba ANOVA para muestras correlacionadas, pues tenemos un diseño con medidas repetidas, en donde a cada caso se le toman medidas en diferentes momentos.
+
+Primero, establecemos las hipótesis con las que hay que trabajar:
+
+H0: No existen diferencias en los niveles de H2O2 entre los hombres de 40-49 años que usaron ChaoCaspa para cada mes registrado.
+
+De forma matematica queda como: $H_0 : \mu_{3} = \mu_{6} = \mu_{9} = \mu_{12}$
+
+
+HA: Existe diferencias en los niveles de H2O2 entre los hombres de 40-49 años que usaron ChaoCaspa entre, por lo menos, dos meses registrados.
+
+De forma matematica queda como: $H_A : \exists i, j \in {3, 6, 9, 12 }, i \neq j \mid \mu_i \neq \mu_j$
+
+Antes que nada, hay que verificar las condiciones de esta prueba
+
+1) La escala con la que se mide la variable dependiente tiene las propiedades de una escala de intervalos iguales, pues es una unidad física.
+
+2) Las medidas al interior de cada grupo son independientes, pues la muestra se tomó de un grupo aleatorio.
+
+3) Hay que comprobar la normalidad de cada una de las variables, para esto, se utilizará la prueba de Shapiro-Wilk
+
+```{r}
+
+shapiroN3 <- shapiro.test(datosFiltradosP1$NIVEL_3)
+print(shapiroN3)
+
+shapiroN6 <- shapiro.test(datosFiltradosP1$NIVEL_6)
+print(shapiroN6)
+
+shapiroN9 <- shapiro.test(datosFiltradosP1$NIVEL_9)
+print(shapiroN9)
+
+shapiroN12 <- shapiro.test(datosFiltradosP1$NIVEL_12)
+print(shapiroN12)
+
+```
+
+Vemos que todos los niveles de H2O2 medidos en los niveles X correspondientes siguen una distribución normal, por lo que esta condición sí se cumple.
+
+4) La matriz de varianzas-covarianzas es esférica. Las varianzas entre los diferentes niveles de las medidas repetidas deben ser iguales.
+
+Esta es la última condición que hay que cumplir, se puede hacer automáticamente al realizar la prueba ANOVA.
+
+Primero, debemos transformar los datos a formato largo para así poder trabajar con ANOVA
+
+```{r}
+library(ez)
+library(tidyverse)
+library(ggpubr) 
+
+datosFiltradosP1 <- datosFiltradosP1 %>% pivot_longer(c("NIVEL_3", "NIVEL_6", "NIVEL_9", "NIVEL_12"), 
+                                names_to = "Mes", values_to = "Nivel")
+
+datosFiltradosP1[["Mes"]] <- factor(datosFiltradosP1[["Mes"]])
+
+# Realizar el ANOVA de medidas repetidas usando ezANOVA
+resultado_anova <- ezANOVA(
+  data = datosFiltradosP1,                
+  dv = .(Nivel),                           
+  wid = .(ID),                             
+  within = .(Mes),                  
+  detailed = TRUE,
+  type = 3            
+)
+
+# Mostrar el resultado de la prueba de esfericidad de Mauchly, que verifica si la varianza de las diferencias es homogénea
+print(resultado_anova[["Mauchly's Test for Sphericity"]])
+
+```
+
+Vemos que el valor de p es mayor a 0.05, lo que significa que no hay suficiente evidencia para decir que los datos no cumplen con la condición de la esfericidad.
+
+Cumplidas todas las condiciones, podemos utilizar ANOVA. Veamos los resultados de la prueba para ver qué podemos concluir respecto a nuestras hipótesis.
+
+```{r}
+cat("Resultado de la prueba con ezANOVA()\n")
+print(resultado_anova[["ANOVA"]])
+```
+
+Vemos que el valor de p es menor a 0.05, por lo tanto, se rechaza la hipótesis nula en favor de la alternativa. Esto significa que, existen por lo menos dos meses que tienen diferencias entre sus niveles de H2O2, pero la prueba no nos dice cuáles son estos meses, por lo que hay que utilizar una prueba Post-Hoc.
+
+
+```{r}
+# Realizar comparaciones por pares con corrección de Bonferroni
+post_hoc <- pairwise.t.test(datosFiltradosP1$Nivel, datosFiltradosP1$Mes, 
+                            p.adjust.method = "bonferroni")
+
+print(post_hoc)
+
+```
+
+Viendo la matriz, podemos decir que los únicos meses entre los que hay alguna diferencia, son el mes 3 y el mes 12, pues el valor p entre ellos es de 0.025 < 0.05. Con respecto a los demás, tienen un valor p mayor a 0.05, esto significa que no tenemos evidencia suficiente para asegurar si hay alguna diferencia entre ellos o no.
+
+
+# Pregunta 2
+
+El químico farmacéutico sospecha que, para el mes 9, existe una diferencia en la percepción de la cantidad de canas entre hombres y mujeres que utilizaron ChaoCaspa. Para confirmar esta creencia, se les solicita realizar un análisis inferencial, con un 95% de confianza, explicando y justificando paso a paso el procedimiento seguido (Hipótesis contrastadas, prueba(s) estadística(s), verificación de condiciones, etc.), y entregar una respuesta concreta al químico farmacéutico.
+
+Para poder realizar el análisis que se solicita, es decir, ver si realmente existe una diferencia en la percepción de la cantidad de canas entre hombres y mujeres que utilizaron ChaoCaspa en el mes 9, se plantea las siguientes hipótesis:
+
+Ho: No existe una diferencia en la percepción de la cantidad de canas entre hombres y mujeres que utilizaron ChaoCaspa en el mes 9.
+
+De forma matematica queda como:  $H_0 : \mu_9{M} = \mu_9{F}$
+
+Ha: Existe una diferencia en la percepción de la cantidad de canas entre hombres y mujeres que utilizaron ChaoCaspa en el mes 9.
+
+De forma matematica queda como:$H_A: \mu_{9M} \neq \mu_{9F}$
+
+Primero, se procede a revisar si los datos siguen una distribución normal, para ello se emplea la prueba de Shapiro-Wilk.
+
+```{r}
+library(dplyr)
+#Se filtran los datos por sexo
+datos_hombres <- datos %>% filter(SEXO == "M")
+datos_mujeres <- datos %>% filter(SEXO == "F")
+#Se aplica la prueba de Shapiro-Wilk
+shapiro.test(datos_hombres$PERCEPCION_9)
+shapiro.test(datos_mujeres$PERCEPCION_9)
+
+```
+
+Dado que el valor entregado en la prueba es menor a nuestro alfa (0.05), los datos no se encuentran normalmente distribuidos. Por lo tanto, se procede a emplear la prueba de Wilcoxon y tiene que cumplir que:
+
+1.Los datos son independientes y, como se sacan al azar de la población y la elección de un hombre no influye en la elección de una mujer, se cumple esta condición.
+
+2.La escala de medición tiene que ser ordinal, lo cual se cumple. Debido a que se encuentra en una escala de Likert del -4 al 4.
+
+```{r}
+wilcox <- wilcox.test(datos_hombres$PERCEPCION_9, datos_mujeres$PERCEPCION_9,conf.level=0.95)
+wilcox
+```
+
+Como el valor de p obtenido es mayor al alfa estipulado (0.05), no se rechaza la hipótesis nula. Por lo tanto, no existe suficiente evidencia para poder afirmar que existe una diferencia en la percepción de la cantidad de canas entre hombres y mujeres que utilizaron ChaoCaspa en el mes 9.
+
